@@ -210,3 +210,29 @@ BEGIN
 END
 GO 
 
+/* 4.7 b My_Active_Deliveries
+My active deliveries. (status is the SubOrder status)
+Type: Table-Valued Function
+Name: My_Active_Deliveries
+Input: rider_id int
+Output: Table (delivery_id, order_id, suborder_id, business_name, customer_name,
+address_description, zone_name, status, assigned_at)
+*/
+
+CREATE FUNCTION dbo.My_Active_Deliveries
+(@rider_id INT)
+RETURNS TABLE 
+AS 
+RETURN 
+(
+    SELECT D.delivery_id, O.order_id, S.suborder_id, B.name AS business_name, U.first_name, U.middle_name, U.last_name, A.description AS address_description, Z.zone_name, S.status, D.assigned_at
+    FROM Delivery D 
+    INNER JOIN SubOrder S ON S.suborder_id = D.suborder_id
+    INNER JOIN Order O ON O.order_id = S.order_id
+    INNER JOIN Business B ON B.business_id = S.business_id
+    INNER JOIN Cart C ON C.cart_id = O.cart_id
+    INNER JOIN Users U ON U.user_id = C.customer_id
+    INNER JOIN Address A ON A.customer_id = C.customer_id
+    INNER JOIN Zone Z ON A.zone_id = Z.zone_id
+    WHERE D.rider_id = @ridder_id
+)
