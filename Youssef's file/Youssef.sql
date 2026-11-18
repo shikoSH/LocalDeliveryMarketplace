@@ -325,3 +325,27 @@ RETURN
 );
 GO
 
+/* 4.7 f My_Rating_Summary
+My average rider rating, number of ratings and count per star.
+Type: Table-Valued Function
+Name: My_Rating_Summary
+Input: rider_id int
+Output: Table (avg_rating, ratings_count, five_star, four_star, three_star, two_star, one_star)
+*/
+
+CREATE FUNCTION dbo.My_Rating_Summary
+    (@rider_id INT)
+RETURNS TABLE 
+AS 
+RETURN 
+(
+    SELECT AVG(CAST(rider_rating AS DECIMAL(3,2))) avg_rating, COUNT(rider_rating) ratings_count,
+    COUNT(CASE WHEN rider_rating = 5 THEN 1 END) AS five_star,
+    COUNT(CASE WHEN rider_rating = 4 THEN 1 END) AS four_star,
+    COUNT(CASE WHEN rider_rating = 3 THEN 1 END) AS three_star,
+    COUNT(CASE WHEN rider_rating = 2 THEN 1 END) AS two_star,
+    COUNT(CASE WHEN rider_rating = 1 THEN 1 END) AS one_star
+    FROM Delivery
+    WHERE rider_id = @rider_id
+)
+
