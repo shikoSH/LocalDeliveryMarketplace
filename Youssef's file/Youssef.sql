@@ -102,3 +102,30 @@ RETURN
 -- COUNT(*) because id is unique so it must exist for feedback row to exist
 GO
 
+/* 4.6 l Submit_Feedback
+Leave one feedback for a Delivered SubOrder.
+Type: Stored Procedure
+Name: Submit_Feedback
+Input: suborder_id int, headline varchar(100), description varchar(500), rating int
+Output: Nothing
+*/
+
+CREATE PROCEDURE Submit_Feedback
+    @suborder_id int, 
+    @headline varchar(100), 
+    @description varchar(500), 
+    @rating int
+AS
+BEGIN
+    IF @suborder_id IS NULL OR @headline IS NULL OR @rating IS NULL
+    BEGIN
+        RETURN;
+    END
+    IF @rating < 1 OR @rating > 5
+    BEGIN
+        RETURN;
+    END
+    INSERT INTO Feedback (headline, description, rating, suborder_id)
+        VALUES (@headline, @description, @rating, @suborder_id);
+
+END
