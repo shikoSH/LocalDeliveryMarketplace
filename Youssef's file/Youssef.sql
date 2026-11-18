@@ -69,7 +69,8 @@ RETURN
     INNER JOIN User U ON U.user_id = R.rider_id
     INNER JOIN Zone Z ON Z.zone_id = R.zone_id
     INNER JOIN Admin A ON Z.zone_id = A.zone_id
-    WHERE A.role IN ('Super Admin', 'Zone Admin') AND (D.assigned_at BETWEEN @from_date AND @to_date) AND (D.delivered_at BETWEEN @from_date AND @to_date)
+    WHERE A.role IN ('Super Admin', 'Zone Admin') AND (CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date) AND (CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date) 
+    --convert datetime to date
     ORDER BY completed_delivery_count DESC, R.rider_id
 
 );
@@ -236,3 +237,30 @@ RETURN
     INNER JOIN Zone Z ON A.zone_id = Z.zone_id
     WHERE D.rider_id = @ridder_id
 )
+
+/* 4.7 c Mark_Picked_Up
+Mark an Assigned delivery as Picked Up (its SubOrder goes from Assigned to Picked Up), stamp
+picked_up_at and recompute the order status.
+Type: Stored Procedure
+Name: Mark_Picked_Up
+Input: delivery_id int
+Output: Nothing
+*/
+GO
+CREATE PROCEDURE Mark_Picked_Up (@delivery_id INT) 
+AS 
+BEGIN
+    DECLARE @suborder_id INT
+    SELECT @suborder_id = suborder_id 
+    FROM Delivery 
+    WHERE delivery_id = @delivery_id
+
+    UPDATE Delivery 
+    SET picked_up_at = CURRENT_TIMESTAMP
+    WHERE delivery_id = @delivery_id 
+
+    UPDATE SubOrder 
+    SET status = 'Picked Up'
+    WHERE suborder_id = @suborder_id
+END
+GO
