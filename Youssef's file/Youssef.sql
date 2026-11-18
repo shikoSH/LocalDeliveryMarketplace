@@ -48,3 +48,30 @@ FROM Delivery D
 INNER JOIN Rider R ON D.rider_id = R.rider_id
 INNER JOIN ZONE Z ON Z.zone_id = R.zone_id
 GO
+
+/* 4.4 m TopRiders
+Top 5 riders by deliveries delivered in a period (ties: smallest rider_id). rider_rank is 1 to 5. Riders with
+none are excluded.
+Admin type: Super Admin or Zone Admin.
+Type: Table-Valued Function
+Name: TopRiders
+Input: from_date date, to_date date
+Output: Table (rider_rank, rider_id, rider_name, completed_delivery_count)
+*/
+CREATE FUNCTION dbo.TopRiders (@from_date DATE, @to_date DATE)
+RETURN TABLE 
+AS 
+RETURN
+(
+    SELECT TOP 5 RANK() OVER (ORDER BY completed_delivery_count DESC, R.rider_id), R.rider_id, U.first_name, U.middle_name, U.last_name, COUNT(R.rider_id) AS completed_delivery_count
+    FROM Delivery D
+    INNER JOIN Rider R ON R.rider_id = D.rider_id
+    INNER JOIN User U ON U.user_id = R.rider_id
+    INNER JOIN Zone Z ON Z.zone_id = R.zone_id
+    INNER JOIN Admin A ON Z.zone_id = A.zone_id
+    WHERE A.role IN ("Super Admin", "Zone Admin") AND (D.assigned_at BETWEEN @from_date AND @to_date) AND (D.delivered_at BETWEEN @from_date AND @to_date)
+    ORDER BY completed_delivery_count DESC, R.rider_id
+
+);
+GO 
+GRANT EXECUTE ON [dbo].[YourProcedureName] TO [YourUserName];
