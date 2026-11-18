@@ -390,7 +390,7 @@ Input: voucher_id int, order_subtotal decimal(10,2)
 Output: discount decimal(10,2)
 */
 
-Create Function Calculate_Voucher_Discount
+Create Function dbo.Calculate_Voucher_Discount
 (
     @voucher_id int,
     @order_subtotal decimal(10,2)
@@ -549,7 +549,7 @@ Output: Table (order_id, order_date, zone_name, status, number_of_suborders, dis
 total_amount, payment_method, refunded_amount)
 */
 -- Implemented by: <Your Name> (<Your ID>)
-create Function My_Order_History
+create Function dbo.My_Order_History
 (
     @customer_id int
 )
