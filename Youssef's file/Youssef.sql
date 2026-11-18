@@ -69,7 +69,7 @@ RETURN
     INNER JOIN User U ON U.user_id = R.rider_id
     INNER JOIN Zone Z ON Z.zone_id = R.zone_id
     INNER JOIN Admin A ON Z.zone_id = A.zone_id
-    WHERE A.role IN ("Super Admin", "Zone Admin") AND (D.assigned_at BETWEEN @from_date AND @to_date) AND (D.delivered_at BETWEEN @from_date AND @to_date)
+    WHERE A.role IN ('Super Admin', 'Zone Admin') AND (D.assigned_at BETWEEN @from_date AND @to_date) AND (D.delivered_at BETWEEN @from_date AND @to_date)
     ORDER BY completed_delivery_count DESC, R.rider_id
 
 );
@@ -150,3 +150,45 @@ BEGIN
     SET rider_rating = @rider_rating
     WHERE suborder_id = @suborder_id AND rider_rating IS NULL --says only once
 END;
+
+/* 4.6 q Recommended_Products
+[Hard] Return up to 10 available products from Active businesses that serve the customer's active
+address. Include only products the customer has never ordered and whose categories the customer has
+ordered from before. Prioritize most ordered categories by the customer, breaking ties by the smallest
+product_id.
+Type: Table-Valued Function
+Name: Recommended_Products
+Input: customer_id int
+Output: Table (product_id, product_name, business_name, category, final_price)
+*/
+
+CREATE FUNCTION dbo.Recommended_Products (@customer_id INT)
+RETURNS TABLE 
+AS 
+RETURN 
+(
+    SELECT TOP 10 P.product_id, P.name AS product_name, B.name AS business_name, P.category, P.price AS final_price
+    FROM Product P
+    INNER JOIN Business B ON P.business_id = B.business_id
+    INNER JOIN (SELECT  P1.category, COUNT(*) AS order_count
+                FROM Product P1 
+                INNER JOIN CartItem CI ON CI.product_id = P1.product_id
+                INNER JOIN Order O2 ON CI.cart_id = O2.cart_id
+                INNER JOIN Cart C2 ON C2.cart_id = CI.cart_id 
+                WHERE C2.customer_id = @customer_id
+                GROUP BY P1.category) AS category_count ON P.category = category_count.category
+    WHERE B.zone_id = (SELECT zone_id FROM Address WHERE customer_id = @customer_id AND is_active = 1) 
+    AND B.status = 'Active' 
+    AND P.product_id NOT IN (
+            SELECT C.product_id
+            FROM Orders O
+            INNER JOIN CartItem C ON C.cart_id = O.cart_id
+            INNER JOIN Cart CR ON CR.cart_id = O.cart_id
+            WHERE CR.customer_id = @customer_id
+    )
+    --3adi 3a4an mafee4 nulls since its also a primary key
+    ORDER BY category_count.order_count DESC, P.product_id ASC
+);
+GO
+--A customer has exactly one active address (is_active = 1); all other addresses of the customer have
+
