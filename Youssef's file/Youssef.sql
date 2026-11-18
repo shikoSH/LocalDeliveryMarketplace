@@ -75,3 +75,30 @@ RETURN
 );
 GO 
 GRANT EXECUTE ON [dbo].[YourProcedureName] TO [YourUserName];
+
+/* 4.5 g BusinessFeedbackOverview
+My average rating, number of feedbacks and count per star.
+Type: Table-Valued Function
+Name: BusinessFeedbackOverview
+Input: business_id int
+Output: Table (avg_rating, number_of_feedbacks, five_star, four_star, three_star, two_star, one_star)
+*/
+
+CREATE FUNCTION dbo.BusinessFeedbackOverview (@business_id INT)
+RETURN TABLE 
+AS 
+RETURN
+(
+    SELECT AVG(F.rating), COUNT(*),
+    COUNT(CASE WHEN rating = 5 THEN 1 END) AS five_star_count,
+    COUNT(CASE WHEN rating = 4 THEN 1 END) AS four_star_count,
+    COUNT(CASE WHEN rating = 3 THEN 1 END) AS three_star_count,
+    COUNT(CASE WHEN rating = 2 THEN 1 END) AS two_star_count,
+    COUNT(CASE WHEN rating = 1 THEN 1 END) AS one_star_count,
+    FROM Feedback F 
+    INNER JOIN SubOrder S ON S.suborder_id = F.suborder_id
+    WHERE S.business_id = @business_id
+);
+-- COUNT(*) because id is unique so it must exist for feedback row to exist
+GO
+
