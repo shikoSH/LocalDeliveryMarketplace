@@ -129,3 +129,24 @@ BEGIN
         VALUES (@headline, @description, @rating, @suborder_id);
 
 END
+
+/* 4.6 m Rate_Rider
+Rate once the rider of a Delivered SubOrder (stored in Delivery.rider_rating).
+Type: Stored Procedure
+Name: Rate_Rider
+Input: suborder_id int, rider_rating int
+Output: Nothing
+*/
+
+CREATE PROCEDURE Rate_Rider
+    @suborder_id INT, @rider_rating INT
+AS
+BEGIN
+    IF @rider_rating < 1 OR @rider_rating > 5
+    BEGIN
+        RETURN;
+    END
+    UPDATE Delivery 
+    SET rider_rating = @rider_rating
+    WHERE suborder_id = @suborder_id AND rider_rating IS NULL --says only once
+END;
