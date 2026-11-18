@@ -59,7 +59,7 @@ Input: from_date date, to_date date
 Output: Table (rider_rank, rider_id, rider_name, completed_delivery_count)
 */
 CREATE FUNCTION dbo.TopRiders (@from_date DATE, @to_date DATE)
-RETURN TABLE 
+RETURNS TABLE 
 AS 
 RETURN
 (
@@ -69,7 +69,7 @@ RETURN
     INNER JOIN User U ON U.user_id = R.rider_id
     INNER JOIN Zone Z ON Z.zone_id = R.zone_id
     INNER JOIN Admin A ON Z.zone_id = A.zone_id
-    WHERE A.role IN ('Super Admin', 'Zone Admin') AND (CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date) AND (CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date) 
+    WHERE A.role IN ('Super Admin', 'Zone Admin') AND (CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date) AND (CAST(D.delivered_at AS DATE) BETWEEN @from_date AND @to_date) 
     --convert datetime to date
     ORDER BY completed_delivery_count DESC, R.rider_id
 
@@ -297,5 +297,31 @@ BEGIN
                         FROM SubOrder 
                         WHERE suborder_id = @suborder_id)
 END
+GO
+
+/* 4.7 e My_Earnings
+My earnings for deliveries delivered in a date range.
+Type: Table-Valued Function
+Name: My_Earnings
+Input: rider_id int, from_date date, to_date date
+Output: Table (completed_deliveries, total_delivery_fees, total_earnings)
+*/
+
+CREATE FUNCTION dbo.My_Earnings 
+    (@rider_id INT, @from_date DATE, @to_date DATE)
+RETURNS TABLE 
+AS 
+RETURN 
+(
+    SELECT 
+        COUNT(D.delivery_id) AS completed_deliveries, 
+        ISNULL(SUM(S.delivery_fee), 0) AS total_delivery_fees, 
+        ISNULL(SUM(S.delivery_fee), 0) * 0.8 AS total_earnings
+    FROM Delivery D
+    INNER JOIN SubOrder S ON D.suborder_id = S.suborder_id
+    WHERE CAST(D.delivered_at AS DATE) BETWEEN @from_date AND @to_date
+      AND D.rider_id = @rider_id
+      AND D.delivered_at IS NOT NULL
+);
 GO
 
