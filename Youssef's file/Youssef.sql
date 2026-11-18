@@ -264,3 +264,38 @@ BEGIN
     WHERE suborder_id = @suborder_id
 END
 GO
+
+/* 4.7 d Mark_Delivered
+Mark a Picked Up delivery as Delivered (its SubOrder goes from Picked Up to Delivered), stamp
+delivered_at, store tracking_time in minutes since pickup and recompute the order status.
+Type: Stored Procedure
+Name: Mark_Delivered
+Input: delivery_id int
+Output: Nothing
+*/
+GO
+CREATE PROCEDURE Mark_Delivered
+(@delivery_id INT)
+AS
+BEGIN
+    DECLARE @suborder_id INT
+    SELECT @suborder_id = suborder_id 
+    FROM Delivery 
+    WHERE delivery_id = @delivery_id
+
+    UPDATE Delivery 
+    SET delivered_at = CURRENT_TIMESTAMP
+    WHERE delivery_id = @delivery_id 
+
+    UPDATE SubOrder 
+    SET status = 'Delivered'
+    WHERE suborder_id = @suborder_id
+
+    UPDATE Orders 
+    SET status = 'Delivered'
+    WHERE order_id = (SELECT order_id 
+                        FROM SubOrder 
+                        WHERE suborder_id = @suborder_id)
+END
+GO
+
