@@ -192,3 +192,21 @@ RETURN
 GO
 --A customer has exactly one active address (is_active = 1); all other addresses of the customer have
 
+/* 4.7 a Set_Rider_Availability
+Set my availability. Unavailable riders keep their current deliveries but get no new ones.
+Type: Stored Procedure
+Name: Set_Rider_Availability
+Input: rider_id int, is_available bit
+Output: Nothing
+*/
+GO
+CREATE PROCEDURE Set_Rider_Availability
+(@rider_id INT, @is_available BIT)
+AS 
+BEGIN 
+    UPDATE Rider 
+    SET is_available = @is_available
+    WHERE rider_id = @rider_id
+END
+GO 
+
