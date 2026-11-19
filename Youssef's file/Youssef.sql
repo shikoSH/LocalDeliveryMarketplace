@@ -349,7 +349,7 @@ RETURN
     WHERE rider_id = @rider_id
 )
 
-/* g My_Delivery_History
+/* 4.7 g My_Delivery_History
 My Delivered and Cancelled deliveries assigned in a date range. (status is the SubOrder status)
 Type: Table-Valued Function
 Name: My_Delivery_History
@@ -357,7 +357,7 @@ Input: rider_id int, from_date date, to_date date
 Output: Table (delivery_id, order_id, business_name, status, assigned_at, picked_up_at,
 delivered_at, tracking_time)
 */
-CREATE FUNCTION My_Delivery_History
+CREATE FUNCTION dbo.My_Delivery_History
 (@rider_id INT, @from_date DATE, @to_date DATE)
 RETURNS TABLE 
 AS 
@@ -372,3 +372,81 @@ RETURN
     AND D.rider_id = @rider_id
 );
 GO 
+
+/* 4.8 b Reconcile_Order_Totals
+[Hard] Return every order whose total_amount differs from the sum of its SubOrders' total_price and
+delivery_fee (cancelled ones included) minus discount_amount, whose payment amount differs from
+total_amount, or that has no payment. Do not fix anything.
+Type: Table-Valued Function
+Name: Reconcile_Order_Totals
+Input: Nothing
+Output: Table (order_id, expected_total, order_total, payment_amount)
+*/
+CREATE FUNCTION dbo.Expected_Total
+(@order_id INT)
+RETURNS DECIMAL(10,2)
+AS 
+BEGIN 
+    DECLARE @out
+    SELECT  @out = (SUM(S.total_price) + SUM(S.delivery_fee) - O.discount_amount)
+    FROM SubOrder S
+    INNER JOIN Orders ON O.order_id = S.order_id
+    WHERE O.order_id = @order_id
+
+    RETURN ISNULL(@out,0)
+END 
+
+CREATE FUNCTION dbo.Reconcile_Order_Totals
+()
+RETURNS TABLE
+AS
+RETURN
+(   
+    SELECT O.order_id, dbo.Expected_Total(O.order_id) AS expected_total, O.total_amount AS order_total, P.payment_amount
+    FROM Orders O 
+    INNER JOIN SubOrder S ON S.order_id = O.order_id
+    LEFT OUTER JOIN Payment P ON P.order_id = O.order_id
+    WHERE dbo.Expected_Total(O.order_id) <> O.total_amount OR P.payment_amount <> O.total_amount OR P.payment_amount IS NULL  
+);
+GO
+
+/* 4.8 d Platform_Health_Snapshot
+Dashboard snapshot: Active businesses, available riders, orders placed today, average tracking_time of
+today's deliveries and feedbacks rated 2 or less today.
+Type: Table-Valued Function
+Name: Platform_Health_Snapshot
+Input: Nothing
+Output: Table (active_businesses, available_riders, orders_today, avg_delivery_time_today,
+low_ratings_today) 
+*/
+CREATE FUNCTION dbo.Platform_Health_Snapshot
+()
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT (
+            SELECT COUNT(*)
+            FROM Business
+            WHERE status = 'Active'
+            ) AS active_businesses, 
+            (SELECT COUNT(*)
+            FROM Rider R
+            WHERE is_available = 1) 
+            AS available_riders, 
+
+            (SELECT COUNT(*)
+            FROM Orders
+            WHERE CAST(order_date AS DATE) = CAST(GETDATE() AS DATE)) 
+            AS orders_today, 
+
+            (SELECT AVG(tracking_time)
+            FROM Delivery
+            WHERE CAST(assigned_at AS DATE) = CAST(GETDATE() AS DATE)) 
+            AS avg_delivery_time_today, 
+
+            (SELECT COUNT(*) 
+            FROM Feedback 
+            WHERE rating<=2 
+            AND CAST(feedback_date AS DATE) = CAST(GETDATE() AS DATE)) AS low_ratings_today
+)
