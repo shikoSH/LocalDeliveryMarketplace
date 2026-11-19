@@ -349,3 +349,26 @@ RETURN
     WHERE rider_id = @rider_id
 )
 
+/* g My_Delivery_History
+My Delivered and Cancelled deliveries assigned in a date range. (status is the SubOrder status)
+Type: Table-Valued Function
+Name: My_Delivery_History
+Input: rider_id int, from_date date, to_date date
+Output: Table (delivery_id, order_id, business_name, status, assigned_at, picked_up_at,
+delivered_at, tracking_time)
+*/
+CREATE FUNCTION My_Delivery_History
+(@rider_id INT, @from_date DATE, @to_date DATE)
+RETURNS TABLE 
+AS 
+RETURN 
+(
+    SELECT D.delivery_id, S.order_id, B.name AS business_name, S.status, D.assigned_at, D.picked_up_at, D.delivered_at, D.tracking_time
+    FROM Delivery D 
+    INNER JOIN SubOrder S ON S.suborder_id = D.suborder_id
+    INNER JOIN Business B ON B.business_id = S.business_id
+    WHERE S.status IN ('Delivered', 'Cancelled') 
+    AND CAST(D.assigned_at AS DATE) BETWEEN @from_date AND @to_date
+    AND D.rider_id = @rider_id
+);
+GO 
