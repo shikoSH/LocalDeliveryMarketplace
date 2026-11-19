@@ -199,7 +199,6 @@ begin
 
     return 0; -- [ADDED]
 end
--- [ADDED] batch separator
 GO
 
 
