@@ -610,20 +610,338 @@ Name: Checkout_Cart
 Input: cart_id int, voucher_id int (nullable), payment_method varchar(20), card_id int (nullable)
 Output: Nothing
 */
+-- Implemented by: <Your Name> (<Your ID>) -- ADDED
+create Procedure Checkout_Cart
+    @cart_id int,
+    @voucher_id int = null,
+    @payment_method varchar(20),
+    @card_id int = null
+As
+begin
+    -- the first reject bullet point 
+    -- Reject if the cart is not Active
+    if not exists (select * from Cart where cart_id = @cart_id and status = 'Active')
+    begin
+        return -4; -- CHANGED: wrong status (was -1)
+    end
+
+    -- Reject if the cart is empty
+    if not exists (select * from CartItem where cart_id = @cart_id)
+    begin
+        return -9; 
+    end
+
+    -- Reject if the customer is Blacklisted
+    declare @customer_id int;
+    select @customer_id = customer_id from Cart where cart_id = @cart_id;
+
+    if exists (select * from Blacklist where customer_id = @customer_id)
+    begin
+        return -3; -- Customer is Blacklisted
+    end
+    -- Reject if the cart address is not the active address of the customer
+    if not exists (
+        select * from Cart c inner join Address a on c.address_id = a.address_id
+        where c.cart_id = @cart_id and a.customer_id = @customer_id and a.is_active = 1)
+    begin
+        return -4; -- Cart address is not the active address of the customer
+    end
+
+    -- Reject if any product is unavailable
+    if exists (
+        select * from CartItem ci
+        inner join Product p on ci.product_id = p.product_id
+        where ci.cart_id = @cart_id and p.is_available = 0)
+    begin
+    
+        return -4;
+    end
+    --reject if the product is from a business that is not Active
+    if exists (
+        select * from CartItem ci
+        inner join Product p on ci.product_id = p.product_id
+        inner join Business b on p.business_id = b.business_id
+        where ci.cart_id = @cart_id and b.status != 'Active')
+    begin
+        return -4;
+    end
+    -- reject outside the zone of the active address
+    declare @zone_id int;
+    select @zone_id = zone_id from Address where customer_id = @customer_id and is_active = 1;
+
+    if exists (
+        select * from CartItem ci
+        inner join Product p on ci.product_id = p.product_id
+        inner join Business b on p.business_id = b.business_id
+        where ci.cart_id = @cart_id and b.zone_id != @zone_id)
+    begin
+        return -5;
+    end
+    -- reject if the buisness is closed now
+    if exists (
+        select * from CartItem ci
+        inner join Product p on ci.product_id = p.product_id
+        inner join Business b on p.business_id = b.business_id
+        where ci.cart_id = @cart_id
+          and not (
+                 b.opening_hour = b.closing_hour
+              or (b.opening_hour < b.closing_hour and cast(getdate() as time) >= b.opening_hour and cast(getdate() as time) < b.closing_hour)
+              or (b.opening_hour > b.closing_hour and (cast(getdate() as time) >= b.opening_hour or cast(getdate() as time) < b.closing_hour))))
+    begin
+        return -1; -- violates buisness rule
+    end
+
+    -- reject if the voucher is not valid
+    if @voucher_id is not null
+    begin
+        if not exists (
+            select * from Voucher v
+            where v.voucher_id = @voucher_id and v.customer_id = @customer_id and v.status = 'Unused' and v.expiry_date >= cast(getdate() as date))
+        begin
+            return -1; 
+        end
+    end
+
+    --claculating everything here
+    declare @order_total_before_discount decimal(10,2);
+    declare @discount_amount decimal(10,2);
+    declare @order_total decimal(10,2);
+    declare @delivery_fee decimal(10,2);
+    declare @business_count int;
+
+    select @order_total_before_discount = sum(ci.quantity * (p.price - p.discount_amount)) -- thios is the price of the product after the discount on the product not the voucher
+    from CartItem ci inner join Product p on ci.product_id = p.product_id
+    where ci.cart_id = @cart_id;
+
+    select @delivery_fee = delivery_fee from Zone where zone_id = @zone_id;
+
+    select @business_count = count(distinct p.business_id)
+    from CartItem ci inner join Product p on ci.product_id = p.product_id
+    where ci.cart_id = @cart_id;
+
+    set @discount_amount = dbo.Calculate_Voucher_Discount(@voucher_id, @order_total_before_discount);
+    set @order_total = @order_total_before_discount + (@delivery_fee * @business_count) - @discount_amount; -- CHANGED: BR-9 includes the delivery fees-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    --reject if the payment cannot be made
+    --must be one of these
+    if @payment_method is null or @payment_method not in ('Cash', 'Card', 'Wallet')
+    begin
+        return -1;
+    end
+    -- now other verificstions
+    if @payment_method = 'Card'
+    begin
+        if not exists (select * from Card where card_id = @card_id and customer_id = @customer_id)
+        begin
+            return -7; 
+        end
+    end
+    else if @payment_method = 'Wallet'
+    begin
+        declare @wallet_balance decimal(10,2);
+        select @wallet_balance = wallet_balance from Customer where customer_id = @customer_id; 
+        if @wallet_balance < @order_total
+        begin
+            return -7; 
+        end
+    end
+
+    -- ADDED: reject if there is no available rider with an Active account in the zone -------------------------------------------------------------------------------------------------------------- check this part again ------------------------------------------------------------------------------------------------------------------------------
+    if not exists (
+        select * from Rider r inner join Users u on u.user_id = r.rider_id
+        where r.zone_id = @zone_id and r.is_available = 1 and u.account_status = 'Active')
+    begin
+        return -8;
+    end
+
+
+    -- copying each effective unit price into CartItem.unit_price since there may be updates in the price
+    update ci
+    set ci.unit_price = p.price - p.discount_amount -- CHANGED: effective price (BR-7)
+    from CartItem ci
+    inner join Product p on ci.product_id = p.product_id
+    where ci.cart_id = @cart_id;
+
+    -- create the order
+
+    insert into Orders(order_date, status, discount_amount,
+                         total_amount, cart_id, zone_id,voucher_id)
+    values(getdate(), 'Placed', @discount_amount,
+           @order_total, @cart_id, @zone_id, @voucher_id);
+
+
+    -- now store the order id to use later 
+    Declare @order_id int;
+    select @order_id = order_id
+    from Orders
+    where cart_id=@cart_id and zone_id= @zone_id;
+
+
+    -- create one SubOrder per business (not per business type) with its total_price and delivery_fee. The new order starts as Placed (BR-11).
+    insert into SubOrder (status,total_price,delivery_fee,order_id,business_id)
+    select 'Placed',
+           sum(ci.quantity * ci.unit_price),
+           @delivery_fee,
+           @order_id,
+           p.business_id
+    from CartItem ci inner join Product p on ci.product_id = p.product_id
+    where ci.cart_id = @cart_id
+    group by p.business_id;
+
+    -- mark the voucher as Used
+    if @voucher_id is not null
+    begin
+        update Voucher set status = 'Used' where voucher_id = @voucher_id;
+    end
+
+    -- Create one Delivery per SubOrder, assigned to the least-busy rider (ties: smallest rider_id)
+    declare @suborder_id int;
+    declare @rider_id int;
+    select @suborder_id = min(suborder_id) from SubOrder where order_id = @order_id;
+
+    while @suborder_id is not null
+    begin
+        select top 1 @rider_id = r.rider_id
+        from Rider r inner join Users u on u.user_id = r.rider_id
+        where r.zone_id = @zone_id and r.is_available = 1 and u.account_status = 'Active'
+        order by (select count(*)
+                  from Delivery d inner join SubOrder s on s.suborder_id = d.suborder_id
+                  where d.rider_id = r.rider_id and s.status in ('Assigned', 'Picked Up')),
+                 r.rider_id;
+
+        insert into Delivery(assigned_at, suborder_id, rider_id)
+        values(getdate(), @suborder_id, @rider_id);
+
+        update SubOrder set status = 'Assigned' where suborder_id = @suborder_id;
+
+        select @suborder_id = min(suborder_id)
+        from SubOrder
+        where order_id = @order_id and suborder_id > @suborder_id;
+    end
+
+    -- now we should pay 
+    
+    insert into Payment(amount,currency,method,transaction_date,refunded_amount,order_id,card_id) ---------------------------------- shoudl teh currency be EGP ?------------------------------------
+    values(@order_total, 'EGP', @payment_method, getdate(), 0, @order_id,
+           case when @payment_method = 'Card' then @card_id else null end);
+
+    -- deduct the wallet if paying by Wallet
+    if @payment_method = 'Wallet'
+    begin
+        update Customer
+        set wallet_balance = wallet_balance - @order_total
+        where customer_id = @customer_id;
+    end
+
+    -- Chang ethe cart to checked out
+    update Cart set status = 'Checked Out' where cart_id = @cart_id;
+
+    return 0; 
+end
+
+
+
+
+
+
+
 
 
 /*
 and for the second hardest requirement
-j) [Hard] Blacklist a customer for fraudulent behavior.
-o Reject the action if the customer is already Blacklisted.
-o Set account_status to Blacklisted and add the customer to Blacklist with the admin and the
-reason (BR-4).
-o Cancel all of the customer's orders that Cancel_Order would accept, then delete all of their
-Unused vouchers.
-Admin type: Super Admin or Zone Admin (a Zone Admin only for customers with an address in their
-zone, BR-3).
+j) [Hard] Cancel an order before anything is picked up.
+o Reject it if the order is Cancelled or any SubOrder is Picked Up or Delivered.
+o Cancel all remaining SubOrders (and so their Deliveries) and the order, and refund the
+remaining amount (BR-14).
+o If a voucher was used, set it back to Unused and set the order's voucher_id to NULL.
 Type: Stored Procedure
-Name: Blacklist_Customer
-Input: customer_id int, admin_id int, reason varchar(255)
+Name: Cancel_Order
+Input: order_id int
 Output: Nothing
+
 */
+
+
+Create Procedure Cancel_Order
+    @order_id int
+As
+Begin
+    
+    --reject if the order does not exist
+    if not exists (select * from Orders where order_id = @order_id)
+    begin
+        return -1; -- Order does not exist ------------------------------------------------------------------------------------------------------------------------------------------------ not sure of this it may be -9
+    end
+
+    -- reject if the order is Cancelled or any SubOrder is Picked Up or Delivered
+    if exists (
+        select * from Orders o
+        inner join SubOrder so on o.order_id = so.order_id
+        where o.order_id = @order_id 
+        and (o.status = 'Cancelled' or so.status in ('Picked Up', 'Delivered')))
+    begin
+        return -4; 
+    end
+
+    -- cancel all remaining SubOrders order and their Deliveries
+    update SubOrder
+    set status = 'Cancelled'
+    where order_id = @order_id and status in ('Placed', 'Assigned');
+
+    -- cancel the order
+    update Orders
+    set status = 'Cancelled'
+    where order_id = @order_id;
+
+    -- get the remaining refund amount and payment method
+    declare @refund_amount decimal(10,2);
+    declare @payment_method varchar(20);
+    declare @customer_id int;
+
+    select 
+        @refund_amount = p.amount - p.refunded_amount,
+        @payment_method = p.method
+    from Payment p
+    where p.order_id = @order_id;
+
+    -- reject if no payment record exists - -----------------------------------------------------------------------------------------not sure of this one 
+    if @refund_amount is null
+    begin
+        return -7; -- Payment cannot be made
+    end
+
+    -- get the customer who placed the order to use when getting teh wallet balance and refunding the amount
+    select @customer_id = c.customer_id
+    from Orders o
+    inner join Cart c on o.cart_id = c.cart_id
+    where o.order_id = @order_id;
+
+    -- refund the remaining amount (BR-14)
+    update Payment
+    set refunded_amount = refunded_amount + @refund_amount
+    where order_id = @order_id;
+
+    -- Only credit the customer's wallet if the payment method is not Cash
+    if @payment_method != 'Cash'
+    begin
+        update Customer
+        set wallet_balance = wallet_balance + @refund_amount
+        where customer_id = @customer_id;
+    end
+
+    -- if a voucher was used, set it back to Unused and set the order's voucher_id to NULL
+    declare @voucher_id int;
+    select @voucher_id = voucher_id from Orders where order_id = @order_id;
+    if @voucher_id is not null
+    begin
+        update Voucher
+        set status = 'Unused'
+        where voucher_id = @voucher_id;
+
+        update Orders
+        set voucher_id = null
+        where order_id = @order_id;
+    end
+
+    return 0;
+end
