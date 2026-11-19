@@ -15,20 +15,40 @@ Output: Nothing
 
 
 
-Create Procedure Add_Customer_Address
+
+CREATE PROCEDURE Add_Customer_Address
     @customer_id int,
     @description varchar(150),
     @zone_id int
 AS
 BEGIN
-    update Address
-    set is_active = 0
-    where customer_id = @customer_id;
+    -- validate the customer and the zone before deactivating existing addresses
+    IF NOT EXISTS (SELECT * FROM Customer WHERE customer_id = @customer_id)
+    BEGIN
+        RETURN -1;
+    END
 
-    insert into Address(description, is_active, customer_id, zone_id) 
-        values(@description, 1, @customer_id, @zone_id);
+    --if it is all spaces or NULL, reject it 
+    IF @description IS NULL OR LTRIM(RTRIM(@description)) = ''
+    BEGIN
+        RETURN -1;
+    END
 
+    IF NOT EXISTS (SELECT * FROM Zone WHERE zone_id = @zone_id)
+    BEGIN
+        RETURN -1;
+    END
+
+    UPDATE Address
+    SET is_active = 0
+    WHERE customer_id = @customer_id;
+
+    INSERT INTO Address(description, is_active, customer_id, zone_id)
+    VALUES(@description, 1, @customer_id, @zone_id);
+
+    RETURN 0; 
 END
+GO
 
 
 
@@ -62,6 +82,12 @@ Begin
     begin
         return -3;
     end
+    
+    --if it is all spaces or NULL, reject it 
+    IF @description IS NULL OR LTRIM(RTRIM(@description)) = ''
+    BEGIN
+        RETURN -1;
+    END
 
     -- reject if the address belongs to a Placed or In Progress order
     if exists (
@@ -74,8 +100,9 @@ Begin
     end
 
 
+
     -- reject if the action is neither Update nor Delete
-    if @action not in ('Update', 'Delete')
+    if @action is null or @action not in ('Update', 'Delete') -- [MODIFIED] NULL action made "not in" evaluate to unknown and slipped through
     begin
         return -1;
     end
@@ -85,6 +112,12 @@ Begin
     begin
         -- the new zone must exist
         if not exists (select * from Zone where zone_id = @zone_id)
+        begin
+            return -1;
+        end
+
+        -- [ADDED] the new description must not be NULL or all spaces (same rule as Add_Customer_Address)
+        if @description is null or ltrim(rtrim(@description)) = ''
         begin
             return -1;
         end
@@ -109,6 +142,7 @@ Begin
         return 0;
     end
 END
+GO
 
 
 /*
@@ -130,10 +164,43 @@ create Procedure Add_Card
     @expiration_date date
 As
 begin 
+    --  reject if the customer does not exist
+    if not exists (select * from Customer where customer_id = @customer_id)
+    begin
+        return -1;
+    end
+
+    -- reject if the card number is NULL or is not exactly 16 digits (a shorter value is space-padded by char(16))
+    if @card_no is null or @card_no like '%[^0-9]%'
+    begin
+        return -1;
+    end
+
+    -- reject if the card holder name is NULL or all spaces
+    if @card_holder_name is null or ltrim(rtrim(@card_holder_name)) = ''
+    begin
+        return -1;
+    end
+
+    -- reject if the expiration date is NULL or already passed
+    if @expiration_date is null or @expiration_date < cast(getdate() as date)
+    begin
+        return -1;
+    end
+
+    -- reject if the customer already saved this card 
+    if exists (select * from Card where customer_id = @customer_id and card_no = @card_no)
+    begin
+        return -2;
+    end
+
     insert into Card(card_no, card_holder_name, expiration_date, customer_id)
     values(@card_no, @card_holder_name, @expiration_date, @customer_id);
-end
 
+    return 0; -- [ADDED]
+end
+-- [ADDED] batch separator
+GO
 
 
 
@@ -154,6 +221,12 @@ create Procedure Create_Cart
 AS
 begin 
 
+    -- reject if the user is not a customer
+    if not exists (select * from Customer where customer_id = @customer_id)
+    begin
+        return -3;
+    end
+
     -- reject if the user is Blacklisted
     if exists (select * from Users where user_id = @customer_id and account_status = 'Blacklisted')
     begin
@@ -162,13 +235,13 @@ begin
     -- reject if the user has no active address
     if not exists (select * from Address where customer_id = @customer_id and is_active = 1)
     begin
-        return -4;------------------- not sure of this error code  ------------------------------------------------------
+        return -1;-- a missing active address breaks a business rule (BR-8) so it is -1 ------------------- not sure of this error code  ------------------------------------------------------
     end
     --if my active address already has an Active cart, reject it
     if exists (select * from Cart c inner join Address a on c.address_id = a.address_id
                where a.customer_id = @customer_id and a.is_active = 1 and c.status = 'Active')
     begin
-        return -1;
+        return -2; -- the record already exists so it is Duplicate (-2)
     end
     --now create the cart for the active address
     insert into Cart(status,created_at,customer_id,address_id)
@@ -177,6 +250,7 @@ begin
     where customer_id = @customer_id and is_active = 1;
     return 0;
 end
+GO
 
 
 
@@ -211,8 +285,14 @@ Begin
         return -1;
     end
 
-    -- reject if the cart does not exist or is not Active
-    if not exists (select * from Cart where cart_id = @cart_id and status = 'Active')
+    -- reject if the cart does not exist 
+    if not exists (select * from Cart where cart_id = @cart_id)
+    begin
+        return -1;
+    end
+
+    -- reject if the cart is not Active
+    if not exists (select * from Cart where cart_id = @cart_id and status = 'Active') -- [MODIFIED] existence is now checked above, so this one is only the status check (-4)
     begin
         return -4;
     end
@@ -263,7 +343,7 @@ Begin
 
         if (@current_quantity + @quantity) > 10
         begin
-            return -6; -- reject if resulting quantity exceeds 10 ---------------------------------------------- not sure about this one could be out of scope so it would be -3
+            return -6; 
         end
         if(@notes is null)
         begin
@@ -293,6 +373,7 @@ Begin
     end
     return 0;
 end
+GO
 
 
 
@@ -329,6 +410,17 @@ begin
         return -1;
     end
 
+    -- reject if the cart is not Active (only Active carts can be edited, BR-8)
+    if not exists (select * from Cart where cart_id = @cart_id and status = 'Active')
+    begin
+        return -4;
+    end
+
+    -- reject if the product is not in the cart
+    if not exists (select * from CartItem where cart_id = @cart_id and product_id = @product_id)
+    begin
+        return -1;
+    end
 
 
     --if both the cart and the product exist, delete the product from the cart
@@ -336,6 +428,7 @@ begin
     where cart_id = @cart_id and product_id = @product_id;
     return 0;
 end
+GO
 
 /*
 and for the 7th requirement
@@ -374,6 +467,7 @@ begin
 
 
 end
+GO
 
 /*
 and for the 8th requirement
@@ -409,14 +503,14 @@ begin
 
     if @voucher_id is not null -- case that the voucher is null
     begin
-        -- CHANGED: percentage gives subtotal * amount / 100, otherwise the fixed amount
+        --calculate the discount based on the voucher's type and amount, only if the voucher is valid
         select @discount = case when v.is_percentage = 1
                                 then @order_subtotal * v.amount / 100
                                 else v.amount end
         from Voucher v
         where v.voucher_id = @voucher_id -- case that the voucher is missing
-        and v.status = 'Unused' -- CHANGED: case that the voucher is not Unused
-        and v.expiry_date >= cast(getdate() as date); -- CHANGED: case that the voucher is expired
+        and v.status = 'Unused' -- case that the voucher is not Unused
+        and v.expiry_date >= cast(getdate() as date); -- case that the voucher is expired
     end
 
     -- the discount never exceeds the subtotal
@@ -427,6 +521,7 @@ begin
 
     return @discount;
 end
+GO
 
 
 
@@ -492,7 +587,7 @@ begin
     -- reject if the chosen address already has an Active cart
     if exists (select * from Cart c where c.address_id = @address_id and c.status = 'Active')
     begin
-        return -2; -- The record already exists, so it is -2 (duplicate)
+        return -2; -- Duplicate error code
     end
 
     --nothing can be copied or the products are out of stock or the buisnness is not active
@@ -535,6 +630,7 @@ begin
                             where p.is_available = 1 and b.status = 'Active');
     return 0;
 end
+GO
 
 
 
@@ -582,6 +678,7 @@ begin
 
     return;
 end
+GO
 
 
 
@@ -619,6 +716,12 @@ create Procedure Checkout_Cart
 As
 begin
     -- the first reject bullet point 
+    -- Reject if the cart does not exist (invalid input)
+    if not exists (select * from Cart where cart_id = @cart_id)
+    begin
+        return -1;
+    end
+
     -- Reject if the cart is not Active
     if not exists (select * from Cart where cart_id = @cart_id and status = 'Active')
     begin
@@ -746,7 +849,7 @@ begin
         end
     end
 
-    -- ADDED: reject if there is no available rider with an Active account in the zone -------------------------------------------------------------------------------------------------------------- check this part again ------------------------------------------------------------------------------------------------------------------------------
+    -- reject if there is no available rider with an Active account in the zone -------------------------------------------------------------------------------------------------------------- check this part again ------------------------------------------------------------------------------------------------------------------------------
     if not exists (
         select * from Rider r inner join Users u on u.user_id = r.rider_id
         where r.zone_id = @zone_id and r.is_available = 1 and u.account_status = 'Active')
@@ -821,7 +924,7 @@ begin
 
     -- now we should pay 
     
-    insert into Payment(amount,currency,method,transaction_date,refunded_amount,order_id,card_id) ---------------------------------- shoudl teh currency be EGP ?------------------------------------
+    insert into Payment(amount,currency,method,transaction_date,refunded_amount,order_id,card_id) ---------------------------------- currency is EGP per BR-10, so this is correct ------------------------------------
     values(@order_total, 'EGP', @payment_method, getdate(), 0, @order_id,
            case when @payment_method = 'Card' then @card_id else null end);
 
@@ -838,6 +941,7 @@ begin
 
     return 0; 
 end
+GO
 
 
 
@@ -857,7 +961,6 @@ o If a voucher was used, set it back to Unused and set the order's voucher_id to
 Type: Stored Procedure
 Name: Cancel_Order
 Input: order_id int
-Output: Nothing
 
 */
 
@@ -870,7 +973,7 @@ Begin
     --reject if the order does not exist
     if not exists (select * from Orders where order_id = @order_id)
     begin
-        return -1; -- Order does not exist ------------------------------------------------------------------------------------------------------------------------------------------------ not sure of this it may be -9
+        return -1; -- Order does not exist ------------------------------------------------------------------------------------------------------------------------------------------------ -1 (invalid input) is fine here
     end
 
     -- reject if the order is Cancelled or any SubOrder is Picked Up or Delivered
@@ -883,16 +986,6 @@ Begin
         return -4; 
     end
 
-    -- cancel all remaining SubOrders order and their Deliveries
-    update SubOrder
-    set status = 'Cancelled'
-    where order_id = @order_id and status in ('Placed', 'Assigned');
-
-    -- cancel the order
-    update Orders
-    set status = 'Cancelled'
-    where order_id = @order_id;
-
     -- get the remaining refund amount and payment method
     declare @refund_amount decimal(10,2);
     declare @payment_method varchar(20);
@@ -904,11 +997,21 @@ Begin
     from Payment p
     where p.order_id = @order_id;
 
-    -- reject if no payment record exists - -----------------------------------------------------------------------------------------not sure of this one 
+    -- reject if no payment record exists - -----------------------------------------------------------------------------------------
     if @refund_amount is null
     begin
         return -7; -- Payment cannot be made
     end
+
+    -- cancel all remaining SubOrders order and their Deliveries
+    update SubOrder
+    set status = 'Cancelled'
+    where order_id = @order_id and status in ('Placed', 'Assigned');
+
+    -- cancel the order
+    update Orders
+    set status = 'Cancelled'
+    where order_id = @order_id;
 
     -- get the customer who placed the order to use when getting teh wallet balance and refunding the amount
     select @customer_id = c.customer_id
