@@ -2,7 +2,7 @@
 Average rating and number of feedbacks of every business (NULL and 0 if none).
 Type: View
 Name: BusinessRatingsSummary
-Input: Nothing
+Input: Nothingrating
 Output: Table (business_id, business_name, avg_rating, ratings_count)
 */ 
 GO
@@ -12,6 +12,7 @@ SELECT B.business_id, B.name AS business_name, AVG(rating) AS avg_rating, COUNT(
 FROM Feedback F
 INNER JOIN SubOrder S ON S.suborder_id = F.suborder_id
 INNER JOIN Business B ON S.business_id = B.business_id
+
 GO
 
 /* 4.2 f 
