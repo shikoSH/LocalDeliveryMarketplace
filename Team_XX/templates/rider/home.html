@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Rider home{% endblock %}
+{% block body %}
+<h1>Hello, {{ p.rider_name }}</h1>
+<div class="card">
+  <p>{{ p.vehicle_type }} · plate {{ p.plate_no }} · zone <b>{{ p.zone_name }}</b></p>
+  <p>You are currently <span class="tag {{ 'Active' if p.is_available else 'Cancelled' }}">{{ 'Available' if p.is_available else 'Unavailable' }}</span></p>
+  <form method="post"><input type="hidden" name="available" value="{{ 0 if p.is_available else 1 }}">
+    <button type="submit" class="{{ 'alt' if p.is_available else '' }}">{{ 'Go unavailable' if p.is_available else 'Go available' }}</button></form>
+  <p class="muted">While unavailable, no new deliveries are assigned to you.</p>
+</div>
+<div class="grid g2">
+  <a class="role-card" href="{{ url_for('rider.deliveries') }}"><h3>My deliveries</h3><p class="muted">{{ active }} active right now.</p></a>
+  <a class="role-card" href="{{ url_for('rider.performance') }}"><h3>My performance</h3><p class="muted">Earnings, speed and ratings.</p></a>
+</div>
+{% endblock %}

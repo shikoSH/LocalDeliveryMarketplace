@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}My business{% endblock %}
+{% block body %}
+<h1>My business</h1>
+{% if b %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap"><h2 style="margin:0">{{ b.business_name }}</h2>{{ m.tag(b.status) }}</div>
+  {% if b.status == 'Suspended' %}<div class="flash err" style="margin-top:.7rem">Suspended. Reason: {{ b.suspension_reason }}</div>{% endif %}
+  <p class="muted">{{ b.description or 'No description' }}</p>
+  <p>{{ b.business_type }}{% if b.cuisine_type %} · {{ b.cuisine_type }} · {{ b.food_category }}{% elif b.pharmacy_type %} · {{ b.pharmacy_type }}{% endif %}
+     · {{ b.zone_name }} · {{ b.expected_delivery_time }} min expected delivery</p>
+  <p>Hours: {{ b.opening_hour|hm }} - {{ b.closing_hour|hm }} · Website: {{ b.link_website or '-' }}</p>
+  <p>Phones: {% for p in phones %}<span class="tag">{{ p.phone }}</span> {% else %}<span class="muted">none yet</span>{% endfor %}</p>
+</div>
+{% endif %}
+
+{% if b and b.status != 'Rejected' %}
+<div class="card"><h2 style="margin-top:0">Update hours, website or add a phone</h2>
+<form class="stack" method="post" novalidate><input type="hidden" name="form" value="update">
+  <div class="cols">
+    <label>Opening hour<input type="time" name="opening_hour" value="{{ b.opening_hour|isotime }}"></label>
+    <label>Closing hour<input type="time" name="closing_hour" value="{{ b.closing_hour|isotime }}"></label>
+    <label>Website<input name="link_website" maxlength="255" value="{{ b.link_website or '' }}"></label>
+    <label>New phone number <small>11 digits</small><input name="phone" pattern="[0-9]{11}" maxlength="11" inputmode="numeric"></label>
+  </div>
+  <div><button type="submit">Save changes</button></div>
+</form></div>
+{% else %}
+<div class="card"><h2 style="margin-top:0">{{ 'Register your business again' if b else 'Register your business' }}</h2>
+{% if b %}<p class="muted">The admin rejected your business. Fix the details below and send it again. Your old phone numbers are replaced by the one you enter.</p>{% endif %}
+<form class="stack" method="post" novalidate><input type="hidden" name="form" value="register">
+  <div class="cols">
+    <label>Business name *<input name="name" maxlength="100" required value="{{ b.business_name if b else '' }}"></label>
+    <label>Type *<select name="business_type" required onchange="document.getElementById('rest').hidden=this.value!=='Restaurant';document.getElementById('pharm').hidden=this.value!=='Pharmacy'">
+      <option value="">Choose a type</option><option>Restaurant</option><option>Pharmacy</option></select></label>
+    {{ m.zone_select(zones, selected=b.zone_id if b else None, label='Zone *') }}
+  </div>
+  <label>Description<input name="description" maxlength="255" value="{{ b.description or '' if b else '' }}"></label>
+  <div class="cols">
+    <label>Opening hour *<input type="time" name="opening_hour" required></label>
+    <label>Closing hour *<input type="time" name="closing_hour" required></label>
+    <label>Expected delivery time (minutes) *<input type="number" name="expected_delivery_time" min="1" required></label>
+    <label>Phone <small>11 digits</small><input name="phone" pattern="[0-9]{11}" maxlength="11" inputmode="numeric"></label>
+    <label>Website<input name="link_website" maxlength="255"></label>
+  </div>
+  <div class="cols" id="rest" hidden>
+    <label>Cuisine type *<input name="cuisine_type" maxlength="50" placeholder="Egyptian"></label>
+    <label>Food category *<input name="food_category" maxlength="50" placeholder="Fast food"></label>
+  </div>
+  <div class="cols" id="pharm" hidden><label>Pharmacy type *<input name="pharmacy_type" maxlength="50" placeholder="Retail"></label></div>
+  <div><button type="submit">Send for approval</button></div>
+</form></div>
+{% endif %}
+{% endblock %}

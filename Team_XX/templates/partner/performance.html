@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Performance{% endblock %}
+{% block body %}
+<h1>Which products bring my revenue, and what do customers think of me?</h1>
+<h2>Customer feedback</h2>
+{% if fb.number_of_feedbacks %}
+<div class="grid g2"><div class="stat"><b>{{ fb.avg_rating|num(2) }} / 5</b><small>{{ fb.number_of_feedbacks }} rating{{ 's' if fb.number_of_feedbacks != 1 }}</small></div>
+<div class="card" style="margin:0">
+  {% for label, n in [('5 stars', fb.five_star), ('4 stars', fb.four_star), ('3 stars', fb.three_star), ('2 stars', fb.two_star), ('1 star', fb.one_star)] %}
+  <div style="display:grid;grid-template-columns:4.5rem 1fr 2rem;gap:.6rem;align-items:center"><span>{{ label }}</span>
+   <div class="bar-track"><div class="bar-fill" style="width:{{ (n / fb.number_of_feedbacks * 100)|round }}%"></div></div><span class="n">{{ n }}</span></div>{% endfor %}
+</div></div>
+{% else %}<div class="empty">No customer has rated {{ b.business_name }} yet.</div>{% endif %}
+<h2>Revenue per product</h2>
+{{ m.range_form(f, t) }}
+{% if sales %}<div class="scroll" style="margin-top:1rem"><table><tr><th>Product</th><th class="n">Units sold</th><th class="n">Revenue</th></tr>
+{% for s in sales %}<tr><td>{{ s.product_name }}</td><td class="n">{{ s.units_sold }}</td><td class="n">{{ s.revenue_per_product|money }}</td></tr>{% endfor %}
+<tr><td><b>Total</b></td><td></td><td class="n"><b>{{ total|money }}</b></td></tr></table></div>
+{% else %}<div class="empty" style="margin-top:1rem">No sales from {{ f|d }} to {{ t|d }}.</div>{% endif %}
+{% endblock %}

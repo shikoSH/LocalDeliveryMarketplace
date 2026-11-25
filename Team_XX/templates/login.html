@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Log in{% endblock %}
+{% block body %}
+<div class="card" style="max-width:420px;margin:2rem auto">
+  <h1>Log in as {{ target }}</h1>
+  <form class="stack" method="post" novalidate>
+    <label>Username<input name="username" maxlength="30" required autofocus autocomplete="username"></label>
+    <label>Password<input type="password" name="password" maxlength="30" required autocomplete="current-password"></label>
+    <button type="submit">Log in</button>
+  </form>
+  {% if target != 'admin' %}<p class="muted">New here? <a href="{{ url_for(target ~ '.register') }}">Create an account</a>.</p>{% endif %}
+  <p class="muted"><a href="{{ url_for('index') }}">Choose another account type</a></p>
+</div>
+{% endblock %}

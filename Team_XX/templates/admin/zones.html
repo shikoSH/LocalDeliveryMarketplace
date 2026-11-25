@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Zones{% endblock %}
+{% block body %}
+<h1>Zones and delivery fees</h1>
+<p class="lead">The delivery fee is charged once per business in an order.</p>
+<div class="scroll"><table><tr><th>Zone</th><th class="n">Delivery fee</th>{% if admin_role == 'Super Admin' %}<th>Change fee</th>{% endif %}</tr>
+{% for z in zones %}<tr><td>{{ z.zone_name }}</td><td class="n">{{ z.delivery_fee|money }}</td>
+ {% if admin_role == 'Super Admin' %}<td><form class="row" method="post"><input type="hidden" name="form" value="fee"><input type="hidden" name="zone_id" value="{{ z.zone_id }}">
+   <input type="number" name="delivery_fee" step="0.01" min="0" required aria-label="New fee for {{ z.zone_name }}" style="width:8rem"><button class="sm" type="submit">Save fee</button></form></td>{% endif %}</tr>{% endfor %}</table></div>
+{% if admin_role == 'Super Admin' %}
+<div class="card" style="margin-top:1rem"><h2 style="margin-top:0">Create a zone</h2>
+<form class="row" method="post"><input type="hidden" name="form" value="create">
+  <label>Zone name *<input name="zone_name" maxlength="50" required></label>
+  <label>Delivery fee (EGP) *<input type="number" name="delivery_fee" step="0.01" min="0" required></label>
+  <button type="submit">Create zone</button></form></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Market{% endblock %}
+{% block body %}
+<h1>What sells most, and which businesses do customers love or avoid?</h1>
+<h2>Top selling products</h2>
+{% if products %}<div class="scroll"><table><tr><th>#</th><th>Product</th><th>Business</th><th>Type</th><th class="n">Units sold</th><th class="n">Revenue</th></tr>
+{% for p in products %}<tr><td>{{ loop.index }}</td><td>{{ p.product_name }}</td><td>{{ p.business_name }}</td><td>{{ p.business_type }}</td>
+ <td class="n">{{ p.units_sold }}</td><td class="n">{{ p.total_revenue|money }}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No sales yet.</div>{% endif %}
+<div class="grid g2">
+ <div><h2>Loved by customers</h2>
+  {% if loved %}<table><tr><th>Business</th><th class="n">Rating</th><th class="n">Ratings</th></tr>
+  {% for b in loved %}<tr><td>{{ b.business_name }}</td><td class="n">{{ b.avg_rating|num(2) }}</td><td class="n">{{ b.ratings_count }}</td></tr>{% endfor %}</table>{% else %}<div class="empty">No ratings yet.</div>{% endif %}</div>
+ <div><h2>Customers avoid</h2>
+  {% if avoided %}<table><tr><th>Business</th><th class="n">Rating</th><th class="n">Ratings</th></tr>
+  {% for b in avoided %}<tr><td>{{ b.business_name }}</td><td class="n">{{ b.avg_rating|num(2) }}</td><td class="n">{{ b.ratings_count }}</td></tr>{% endfor %}</table>{% else %}<div class="empty">No ratings yet.</div>{% endif %}</div>
+</div>
+{% if unrated %}<p class="muted">Not rated yet: {% for b in unrated %}{{ b.business_name }}{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+{% endblock %}

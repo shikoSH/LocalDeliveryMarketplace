@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Products{% endblock %}
+{% block body %}
+<h1>My products</h1>
+{% if b.status == 'Suspended' %}<div class="flash err">Your business is suspended, so products cannot be changed or turned on.</div>{% endif %}
+<div class="card"><h2 style="margin-top:0">{{ 'Edit ' ~ edit.product_name if edit else 'Add a product' }}</h2>
+<form class="stack" method="post" novalidate><input type="hidden" name="form" value="save">
+  {% if edit %}<input type="hidden" name="product_id" value="{{ edit.product_id }}">{% endif %}
+  <div class="cols">
+    <label>Name *<input name="name" maxlength="100" required value="{{ edit.product_name if edit else '' }}"></label>
+    <label>Category *<input name="category" maxlength="50" required value="{{ edit.category if edit else '' }}"></label>
+    <label>Price (EGP) *<input type="number" name="price" step="0.01" min="0.01" required value="{{ edit.price if edit else '' }}"></label>
+  </div>
+  <label>Description<input name="description" maxlength="255" value="{{ (edit.description or '') if edit else '' }}"></label>
+  <label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" name="is_available" {{ 'checked' if (not edit) or edit.is_available }}> Available to customers</label>
+  <div><button type="submit">Save product</button>{% if edit %} <a class="btn alt" href="{{ url_for('partner.products') }}">Cancel</a>{% endif %}</div>
+</form></div>
+
+{% if rows %}
+<div class="scroll"><table>
+  <tr><th>Product</th><th>Category</th><th class="n">Price</th><th class="n">Discount</th><th class="n">Customer pays</th><th>Status</th><th>Actions</th></tr>
+  {% for p in rows %}<tr>
+    <td>{{ p.product_name }}<br><small class="muted">{{ p.description or '' }}</small></td><td>{{ p.category }}</td>
+    <td class="n">{{ p.price|money }}</td><td class="n">{{ p.discount_amount|money }}</td><td class="n">{{ p.final_price|money }}</td>
+    <td>{% if p.is_available %}<span class="tag Active">Available</span>{% else %}<span class="tag Cancelled">Hidden</span>{% endif %}</td>
+    <td>
+      <a class="btn alt sm" href="{{ url_for('partner.products', edit=p.product_id) }}">Edit</a>
+      <form method="post" class="inline"><input type="hidden" name="form" value="toggle"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+        <input type="hidden" name="to" value="{{ 0 if p.is_available else 1 }}"><button class="sm alt" type="submit">{{ 'Deactivate' if p.is_available else 'Reactivate' }}</button></form>
+      <form class="row" method="post" style="margin-top:.4rem"><input type="hidden" name="form" value="promo"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+        <input type="number" name="discount_amount" step="0.01" min="0" max="{{ (p.price / 2)|round(2) }}" placeholder="Discount EGP" aria-label="Discount for {{ p.product_name }}" style="width:7.5rem" required>
+        <button class="sm" type="submit">Set discount</button>
+      </form>
+      {% if p.discount_amount > 0 %}<form method="post" class="inline"><input type="hidden" name="form" value="promo"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+        <input type="hidden" name="discount_amount" value="0"><button class="sm alt" type="submit">Remove discount</button></form>{% endif %}
+    </td></tr>{% endfor %}
+</table></div>
+<p class="muted">A discount can be at most half of the price. Use Remove discount to take it off.</p>
+{% else %}<div class="empty">You have no products yet. Add the first one above.</div>{% endif %}
+{% endblock %}

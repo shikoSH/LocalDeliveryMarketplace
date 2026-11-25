@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block body %}
+<h1>Order from local businesses. Delivered by local riders.</h1>
+<p class="lead">Pick how you use the platform. Customers, partners and riders can register; admins only log in.</p>
+<div class="hero">
+  <div class="role-card"><h3>Customer</h3><p class="muted">Browse restaurants and pharmacies in your zone and track every order.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='customer') }}">Log in</a><a class="btn alt" href="{{ url_for('customer.register') }}">Register</a></div></div>
+  <div class="role-card"><h3>Partner</h3><p class="muted">Register your restaurant or pharmacy and manage its products.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='partner') }}">Log in</a><a class="btn alt" href="{{ url_for('partner.register') }}">Register</a></div></div>
+  <div class="role-card"><h3>Rider</h3><p class="muted">Deliver orders in your zone and see what you earn.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='rider') }}">Log in</a><a class="btn alt" href="{{ url_for('rider.register') }}">Register</a></div></div>
+  <div class="role-card"><h3>Admin</h3><p class="muted">Approve businesses, manage zones and watch the platform.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='admin') }}">Log in</a></div></div>
+</div>
+{% endblock %}

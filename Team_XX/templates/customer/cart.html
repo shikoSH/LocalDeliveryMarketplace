@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Cart{% endblock %}
+{% block body %}
+<h1>My cart</h1>
+{% if cid is none %}
+<div class="card"><p>You have no active cart{% if p.active_address %} for <b>{{ p.active_address }}</b>{% endif %}.</p>
+  <form method="post"><input type="hidden" name="form" value="create"><button type="submit">Create a cart for my active address</button></form></div>
+{% elif not items %}
+<div class="empty">Your cart is empty. <a href="{{ url_for('customer.browse') }}">Find something to order</a>.</div>
+{% else %}
+<p class="lead">Delivering to <b>{{ p.active_address }}</b> ({{ p.active_zone }}).</p>
+<div class="scroll"><table><tr><th>Business</th><th>Product</th><th>Note</th><th class="n">Qty</th><th class="n">Unit price</th><th class="n">Total</th><th></th></tr>
+{% for i in items %}<tr><td>{{ i.business_name }}</td><td>{{ i.product_name }}{% if not i.is_available %} <span class="tag Cancelled">No longer available</span>{% endif %}</td><td>{{ i.notes or '' }}</td>
+ <td class="n">{{ i.quantity }}</td><td class="n">{{ i.unit_price|money }}</td><td class="n">{{ i.line_total|money }}</td>
+ <td><form method="post" class="inline"><input type="hidden" name="form" value="remove"><input type="hidden" name="product_id" value="{{ i.product_id }}"><button class="sm alt" type="submit">Remove</button></form></td></tr>{% endfor %}
+<tr><td colspan="5"><b>Products total</b></td><td class="n"><b>{{ total|money }}</b></td><td></td></tr></table></div>
+<p style="margin-top:1rem"><a class="btn" href="{{ url_for('customer.checkout') }}">Go to checkout</a> <a class="btn alt" href="{{ url_for('customer.browse') }}">Add more</a></p>
+{% endif %}
+{% endblock %}

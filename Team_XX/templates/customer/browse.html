@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Browse{% endblock %}
+{% block body %}
+<h1>Find a business</h1>
+<p class="lead">{% if p.active_zone %}Showing businesses that deliver to <b>{{ p.active_address }}</b> ({{ p.active_zone }}).{% else %}Add an address to see businesses near you.{% endif %}</p>
+<div class="grid g2">
+<form class="card row" method="get"><label style="flex:1;min-width:200px">Search by name<input name="q" value="{{ q }}" maxlength="100" placeholder="Business name"></label><button type="submit">Search</button></form>
+<form class="card row" method="get"><label style="flex:1;min-width:200px">Browse by product category
+  <select name="category"><option value="">Choose a category</option>{% for c in cats %}<option {{ 'selected' if c == category }}>{{ c }}</option>{% endfor %}</select></label><button type="submit">Show businesses</button></form>
+</div>
+{% if mode %}
+<h2>{{ 'Results for "' ~ q ~ '"' if mode == 'search' else 'Businesses selling ' ~ category }}</h2>
+{% if rows %}<div class="grid g3">
+{% for r in rows %}<a class="role-card" href="{{ url_for('customer.business', bid=r.business_id) }}">
+  <div style="display:flex;justify-content:space-between;gap:.5rem"><h3>{{ r.business_name }}</h3>
+    <span class="tag {{ 'open' if r.is_open_now else 'closed' }}">{{ 'Open now' if r.is_open_now else 'Closed now' }}</span></div>
+  <p class="muted">{{ r.zone_name }} · about {{ r.expected_delivery_time }} min</p>
+  <p>{{ m.stars(r.avg_rating) }}{% if r.number_of_ratings %} <span class="muted">({{ r.number_of_ratings }})</span>{% endif %}</p>
+  {% if mode == 'category' and not r.same_zone %}<p><span class="tag warn">Other zone: cannot deliver to your address</span></p>{% endif %}
+</a>{% endfor %}</div>
+{% else %}<div class="empty">{{ 'No active business matches your search in your zone.' if mode == 'search' else 'No business sells this category.' }}</div>{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Favorites{% endblock %}
+{% block body %}
+<h1>Favorites and recommendations</h1>
+<h2>My favorite businesses</h2>
+{% if businesses %}<div class="grid g3">{% for b in businesses %}<div class="card" style="margin:0"><h3><a href="{{ url_for('customer.business', bid=b.item_id) }}">{{ b.item_name }}</a></h3>
+ <form method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Business"><input type="hidden" name="item_id" value="{{ b.item_id }}"><button class="sm alt" type="submit">Remove</button></form></div>{% endfor %}</div>
+{% else %}<div class="empty">No favorite business yet. Open a business and add it.</div>{% endif %}
+<h2>My favorite products</h2>
+{% if products %}<div class="scroll"><table><tr><th>Product</th><th>Business</th><th></th></tr>
+{% for p in products %}<tr><td>{{ p.product_name }}</td><td>{{ p.business_name }}</td><td>
+  {% if p.is_orderable %}<form class="inline" method="post" action="{{ url_for('customer.cart_add') }}"><input type="hidden" name="product_id" value="{{ p.product_id }}"><input type="hidden" name="quantity" value="1">
+    <input type="hidden" name="next" value="/customer/favorites"><button class="sm" type="submit">Add 1 to cart</button></form>{% else %}<span class="tag Cancelled">Not orderable now</span>{% endif %}
+  <form class="inline" method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ p.product_id }}"><button class="sm alt" type="submit">Remove</button></form></td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No favorite product yet.</div>{% endif %}
+<h2>Recommended for me</h2>
+<p class="muted">Products from categories you order often, available in your active zone.</p>
+{% if recs %}<div class="scroll"><table><tr><th>Product</th><th>Business</th><th>Category</th><th class="n">Price</th><th></th></tr>
+{% for r in recs %}<tr><td>{{ r.product_name }}</td><td>{{ r.business_name }}</td><td>{{ r.category }}</td><td class="n">{{ r.final_price|money }}</td><td>
+  <form class="inline" method="post" action="{{ url_for('customer.cart_add') }}"><input type="hidden" name="product_id" value="{{ r.product_id }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="next" value="/customer/favorites"><button class="sm" type="submit">Add 1 to cart</button></form>
+  <form class="inline" method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ r.product_id }}"><button class="sm alt" type="submit">Favorite</button></form></td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">Order a few times and recommendations will appear here.</div>{% endif %}
+{% endblock %}

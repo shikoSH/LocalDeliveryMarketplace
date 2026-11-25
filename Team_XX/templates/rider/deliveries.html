@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}My deliveries{% endblock %}
+{% block body %}
+<h1>What do I do next?</h1>
+{% if rows %}<div class="grid g2">
+{% for d in rows %}<div class="card">
+  <div style="display:flex;justify-content:space-between"><h3>{{ d.business_name }}</h3><span class="muted">Order #{{ d.order_id }}</span></div>
+  {{ m.stepper(d.status) }}
+  <p>Deliver to <b>{{ d.customer_name }}</b><br>{{ d.address_description }} ({{ d.zone_name }})<br><small class="muted">Assigned {{ d.assigned_at|dt }}</small></p>
+  <form method="post"><input type="hidden" name="delivery_id" value="{{ d.delivery_id }}">
+    {% if d.status == 'Assigned' %}<p><b>Next:</b> collect the order from {{ d.business_name }}.</p>
+      <button name="action" value="pickup" type="submit">Mark as picked up</button>
+    {% else %}<p><b>Next:</b> hand the order to {{ d.customer_name }}.</p>
+      <button name="action" value="deliver" type="submit">Mark as delivered</button>{% endif %}
+  </form></div>{% endfor %}</div>
+{% else %}<div class="empty">No active delivery. Make sure you are available to receive new ones.</div>{% endif %}
+{% endblock %}

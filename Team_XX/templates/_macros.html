@@ -1,0 +1,26 @@
+{% macro tag(s) %}<span class="tag {{ s }}">{{ s }}</span>{% endmacro %}
+{% macro zone_select(zones, name='zone_id', selected=None, label='Zone') %}
+<label>{{ label }}
+  <select name="{{ name }}" required>
+    <option value="">Choose a zone</option>
+    {% for z in zones %}<option value="{{ z.zone_id }}" {{ 'selected' if selected == z.zone_id }}>{{ z.zone_name }} (delivery {{ z.delivery_fee|money }})</option>{% endfor %}
+  </select>
+</label>
+{% endmacro %}
+{% macro range_form(f, t, action='') %}
+<form class="row" method="get" action="{{ action }}">
+  <label>From<input type="date" name="from" value="{{ f|iso }}" required></label>
+  <label>To<input type="date" name="to" value="{{ t|iso }}" required></label>
+  <button type="submit">Show</button>
+</form>
+{% endmacro %}
+{% macro stepper(status) %}
+{% set order = ['Placed','Assigned','Picked Up','Delivered'] %}
+{% if status == 'Cancelled' %}<span class="tag Cancelled">Cancelled</span>
+{% else %}
+<ol class="steps" aria-label="Progress: {{ status }}">
+  {% for s in order %}<li class="{{ 'done' if order.index(s) < order.index(status) else '' }} {{ 'now' if s == status else '' }}">{{ s }}</li>{% endfor %}
+</ol>
+{% endif %}
+{% endmacro %}
+{% macro stars(v) %}{% if v is none %}<span class="muted">No ratings yet</span>{% else %}<b>{{ '%.1f'|format(v|float) }}</b> / 5{% endif %}{% endmacro %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Admin dashboard{% endblock %}
+{% block body %}
+<h1>Hello, {{ profile.admin_name }}</h1>
+<p class="lead">{{ profile.role }}{% if profile.zone_name %} for the zone <b>{{ profile.zone_name }}</b>{% endif %}. Here is how the platform looks today.</p>
+
+{% if mismatches %}
+<div class="banner" role="alert">
+  <b>{{ mismatches|length }} order{{ 's' if mismatches|length != 1 }} with totals that do not match.</b>
+  The order total, its parts or its payment disagree. Check these orders before anything else.
+  <div class="scroll" style="margin-top:.6rem"><table>
+    <tr><th>Order</th><th class="n">Expected total</th><th class="n">Order total</th><th class="n">Payment</th></tr>
+    {% for r in mismatches %}<tr><td>#{{ r.order_id }}</td><td class="n">{{ r.expected_total|money }}</td><td class="n">{{ r.order_total|money }}</td>
+      <td class="n">{{ r.payment_amount|money if r.payment_amount is not none else 'No payment' }}</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% else %}
+<div class="banner good">All order totals match their parts and payments.</div>
+{% endif %}
+
+<div class="grid g4">
+  <div class="stat"><b>{{ health.active_businesses }}</b><small>Active businesses</small></div>
+  <div class="stat"><b>{{ health.available_riders }}</b><small>Riders available now</small></div>
+  <div class="stat"><b>{{ health.orders_today }}</b><small>Orders today</small></div>
+  <div class="stat"><b>{{ health.avg_delivery_time_today|num(1) }}</b><small>Average delivery minutes today</small></div>
+  <div class="stat"><b>{{ health.low_ratings_today }}</b><small>Low ratings (1-2 stars) today</small></div>
+  <div class="stat"><b>{{ pending }}</b><small>Businesses awaiting approval</small></div>
+</div>
+{% if health.available_riders == 0 %}<div class="flash warn" style="margin-top:1rem">No rider is available. New orders will fail until a rider switches to available.</div>{% endif %}
+{% if pending %}<p><a class="btn" href="{{ url_for('admin.pending') }}">Review {{ pending }} pending business{{ 'es' if pending != 1 }}</a></p>{% endif %}
+{% endblock %}

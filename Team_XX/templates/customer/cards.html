@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Cards{% endblock %}
+{% block body %}
+<h1>My cards</h1>
+<p class="lead">Only the last 4 digits of a card are ever shown.</p>
+<div class="card"><h2 style="margin-top:0">Save a card</h2>
+<form class="row" method="post" autocomplete="off">
+  <label>Card number * <small>16 digits</small><input name="card_no" inputmode="numeric" pattern="[0-9]{16}" maxlength="16" required autocomplete="off"></label>
+  <label>Card holder *<input name="holder" maxlength="100" required autocomplete="off"></label>
+  <label>Expires on *<input type="date" name="expiration_date" min="{{ today }}" required></label>
+  <button type="submit">Save card</button></form></div>
+{% if rows %}<div class="scroll"><table><tr><th>Card</th><th>Holder</th><th>Expires</th></tr>
+{% for c in rows %}<tr><td>•••• •••• •••• {{ c.last_four_digits }}</td><td>{{ c.card_holder_name }}</td><td>{{ c.expiration_date|d }}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No saved card.</div>{% endif %}
+{% endblock %}

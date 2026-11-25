@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Addresses{% endblock %}
+{% block body %}
+<h1>My addresses</h1>
+<p class="lead">Your active address decides which businesses you can order from and where the order goes.</p>
+<div class="card"><h2 style="margin-top:0">Add an address</h2>
+<form class="row" method="post"><input type="hidden" name="form" value="add">
+  <label style="flex:1;min-width:240px">Address *<input name="description" maxlength="150" required></label>
+  {{ m.zone_select(zones) }}<button type="submit">Add address</button></form>
+<p class="muted">A new address becomes your active address.</p></div>
+{% if rows %}<div class="grid g2">{% for a in rows %}
+<div class="card"><div style="display:flex;justify-content:space-between;gap:.5rem"><h3>{{ a.description }}</h3>{% if a.is_active %}<span class="tag Active">Active</span>{% endif %}</div>
+  <p class="muted">Zone: {{ a.zone_name }}</p>
+  {% if not a.is_active %}<form method="post" class="inline"><input type="hidden" name="form" value="activate"><input type="hidden" name="address_id" value="{{ a.address_id }}"><button class="sm" type="submit">Make active</button></form>{% endif %}
+  <form method="post" class="inline" onsubmit="return confirm('Delete this address? It cannot be undone. If it is used by a cart or an order, it cannot be deleted.')">
+    <input type="hidden" name="form" value="delete"><input type="hidden" name="address_id" value="{{ a.address_id }}"><button class="sm danger" type="submit">Delete</button></form>
+  <details style="margin-top:.6rem"><summary>Edit</summary>
+    <form class="stack" method="post" style="margin-top:.5rem"><input type="hidden" name="form" value="update"><input type="hidden" name="address_id" value="{{ a.address_id }}">
+      <label>Address<input name="description" maxlength="150" required value="{{ a.description }}"></label>
+      {{ m.zone_select(zones, selected=a.zone_id) }}<div><button class="sm" type="submit">Save</button></div></form></details>
+</div>{% endfor %}</div>
+{% else %}<div class="empty">You have no address yet.</div>{% endif %}
+{% endblock %}

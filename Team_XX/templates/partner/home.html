@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Partner home{% endblock %}
+{% block body %}
+<h1>Welcome, {{ user_name }}</h1>
+{% if not b %}
+<div class="card"><h3>You have not registered a business yet</h3><p class="muted">Register your restaurant or pharmacy. An admin approves it before customers can see it.</p>
+  <a class="btn" href="{{ url_for('partner.business') }}">Register my business</a></div>
+{% else %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap"><div><h2 style="margin:0">{{ b.business_name }}</h2>
+    <span class="muted">{{ b.business_type }} in {{ b.zone_name }} · {{ b.opening_hour|hm }} - {{ b.closing_hour|hm }}</span></div>{{ m.tag(b.status) }}</div>
+  {% if b.status == 'Pending' %}<p>Your business is waiting for an admin. You can already add products.</p>
+  {% elif b.status == 'Active' %}<p>Your business is live. Customers in {{ b.zone_name }} can order from it.</p>
+  {% elif b.status == 'Suspended' %}<div class="flash err">Suspended. Reason: {{ b.suspension_reason }}. Your products are off and cannot be turned on until a Super Admin reinstates the business.</div>
+  {% else %}<div class="flash warn">Rejected. Fix the details and register again.</div>
+    <a class="btn" href="{{ url_for('partner.business') }}">Register again</a>{% endif %}
+  <p class="muted">Phones: {% for p in phones %}{{ p.phone }}{{ ', ' if not loop.last }}{% else %}none yet{% endfor %}</p>
+</div>
+<div class="grid g3">
+  <a class="role-card" href="{{ url_for('partner.business') }}"><h3>Business details</h3><p class="muted">Hours, website and phone numbers.</p></a>
+  <a class="role-card" href="{{ url_for('partner.products') }}"><h3>Products</h3><p class="muted">Add, edit, hide and discount products.</p></a>
+  <a class="role-card" href="{{ url_for('partner.performance') }}"><h3>Performance</h3><p class="muted">Revenue per product and customer feedback.</p></a>
+</div>
+{% endif %}
+{% endblock %}

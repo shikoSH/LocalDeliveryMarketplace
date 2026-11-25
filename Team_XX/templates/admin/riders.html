@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Riders{% endblock %}
+{% block body %}
+<h1>Who are the best riders, and who is falling behind?</h1>
+{{ m.range_form(f, t) }}
+<h2>Top riders from {{ f|d }} to {{ t|d }}</h2>
+{% if top %}<div class="scroll"><table><tr><th>Rank</th><th>Rider</th><th class="n">Completed deliveries</th></tr>
+{% for r in top %}<tr><td>{{ r.rider_rank }}</td><td>{{ r.rider_name }}</td><td class="n">{{ r.completed_delivery_count }}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No delivery was completed in this period.</div>{% endif %}
+<h2>All riders (all time)</h2>
+<p class="muted">A rider is flagged when they completed fewer deliveries than the average rider or their rating is below 3.</p>
+<div class="scroll"><table><tr><th>Rider</th><th>Zone</th><th class="n">Completed</th><th class="n">Average rating</th><th></th></tr>
+{% for p in perf %}<tr><td>{{ p.rider_name }}</td><td>{{ p.zone_name }}</td><td class="n">{{ p.completed_deliveries }}</td>
+  <td class="n">{{ p.avg_rating|num(2) }}</td><td>{% if p.behind %}<span class="tag warn">Falling behind</span>{% endif %}</td></tr>{% endfor %}</table></div>
+{% endblock %}

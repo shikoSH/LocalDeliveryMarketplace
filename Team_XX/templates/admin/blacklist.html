@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Blacklist{% endblock %}
+{% block body %}
+<h1>Blacklist</h1>
+<div class="card"><h2 style="margin-top:0">Blacklist a customer</h2>
+<form class="row" method="post" id="bl"> <input type="hidden" name="action" value="add"><input type="hidden" name="customer_name" id="cname">
+  <label>Customer *<select name="customer_id" id="cust" required><option value="">Choose a customer</option>
+    {% for c in customers %}<option value="{{ c.customer_id }}">{{ c.customer_name }} ({{ c.username }}){% if c.active_zone %} - {{ c.active_zone }}{% endif %}</option>{% endfor %}</select></label>
+  <label style="flex:1;min-width:240px">Reason *<input name="reason" maxlength="255" required></label>
+  <button class="danger" type="submit">Blacklist</button>
+</form>
+<p class="muted">Blacklisting stops the customer from logging in and ordering. Orders not yet picked up are cancelled and refunded, and unused vouchers are removed.</p></div>
+<script>
+document.getElementById('bl').addEventListener('submit', function(e){
+  var s=document.getElementById('cust'); var n=s.options[s.selectedIndex].text.split(' (')[0];
+  document.getElementById('cname').value=n;
+  if(!confirm('Blacklist '+n+'? They will not be able to log in or order. Their orders not yet picked up will be cancelled and refunded, and their unused vouchers removed.')) e.preventDefault();
+});
+</script>
+<h2>Blacklisted customers</h2>
+{% if banned %}<div class="scroll"><table><tr><th>Customer</th><th>Reason</th><th>Blacklisted by</th><th></th></tr>
+{% for b in banned %}<tr><td>{{ b.customer_name }}</td><td>{{ b.reason }}</td><td>{{ b.blacklisted_by }}</td>
+ <td>{% if b.mine %}<form method="post" class="inline"><input type="hidden" name="customer_id" value="{{ b.customer_id }}"><input type="hidden" name="customer_name" value="{{ b.customer_name }}">
+   <button name="action" value="lift" class="sm alt" onclick='return confirm({{ ("Lift the blacklist on " ~ b.customer_name ~ "? They can log in and order again. Refunded orders stay cancelled.")|tojson }})'>Lift blacklist</button></form>
+   {% else %}<span class="muted">Only {{ b.blacklisted_by }} can lift it</span>{% endif %}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">Nobody is blacklisted.</div>{% endif %}
+{% endblock %}

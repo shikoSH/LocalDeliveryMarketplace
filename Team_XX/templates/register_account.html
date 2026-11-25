@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Register as {{ kind }}{% endblock %}
+{% block body %}
+<div class="card" style="max-width:760px;margin:1rem auto">
+  <h1>Register as a {{ kind }}</h1>
+  <p class="lead">Fields marked * are required.</p>
+  <form class="stack" method="post" novalidate>
+    <div class="cols">
+      <label>First name *<input name="first_name" maxlength="30" required value="{{ request.form.first_name }}"></label>
+      <label>Middle name<input name="middle_name" maxlength="30" value="{{ request.form.middle_name }}"></label>
+      <label>Last name *<input name="last_name" maxlength="30" required value="{{ request.form.last_name }}"></label>
+    </div>
+    <div class="cols">
+      <label>Username *<input name="username" maxlength="30" required value="{{ request.form.username }}" autocomplete="username"></label>
+      <label>Password *<input type="password" name="password" maxlength="30" required autocomplete="new-password"></label>
+      <label>Email *<input type="email" name="email" maxlength="100" required value="{{ request.form.email }}"></label>
+    </div>
+    <div class="cols">
+      <label>Phone <small>11 digits</small><input name="phone" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" value="{{ request.form.phone }}"></label>
+      <label>Date of birth<input type="date" name="dob" max="{{ today }}" value="{{ request.form.dob }}"></label>
+    </div>
+    {% if kind == 'rider' %}
+    <h2>Vehicle and zone</h2>
+    <div class="cols">
+      <label>Vehicle type *<input name="vehicle_type" maxlength="30" required placeholder="Motorbike" value="{{ request.form.vehicle_type }}"></label>
+      <label>Plate number *<input name="plate_no" maxlength="15" required value="{{ request.form.plate_no }}"></label>
+      <label>License number *<input name="license_no" maxlength="20" required value="{{ request.form.license_no }}"></label>
+      {{ m.zone_select(zones, selected=request.form.get('zone_id', 0)|int, label='Your zone *') }}
+    </div>
+    {% endif %}
+    <div><button type="submit">Create account</button> <a class="btn alt" href="{{ url_for('login', role=kind) }}">I already have an account</a></div>
+  </form>
+</div>
+{% endblock %}

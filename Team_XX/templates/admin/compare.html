@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Compare zones{% endblock %}
+{% block body %}
+<h1>Which zone is strongest, and which needs help?</h1>
+<p class="lead">Orders and commission count the dates you choose. Businesses are Active ones today, and delivery speed covers all delivered orders.</p>
+{{ m.range_form(f, t) }}
+{% if rows %}
+<div class="grid g3" style="margin:1rem 0">
+  <div class="stat"><small>Strongest zone</small><b>{{ best.zone_name }}</b><small>{{ best.platform_commission|money }} commission</small></div>
+  <div class="stat"><small>Needs help</small><b>{{ worst.zone_name }}</b><small>{{ worst.number_of_orders }} order{{ 's' if worst.number_of_orders != 1 }} in this period</small></div>
+  <div class="stat"><small>Slowest delivery</small><b>{{ slowest.zone_name if slowest else '-' }}</b><small>{% if slowest %}{{ slowest.avg_tracking_time|num(1) }} min from pick-up to delivery{% else %}No delivery times yet{% endif %}</small></div>
+</div>
+<div class="scroll"><table>
+  <tr><th>Zone</th><th class="n">Active businesses</th><th class="n">Orders</th><th class="n">Average order</th><th class="n">Avg delivery (min)</th><th class="n">Commission</th><th style="width:20%">Commission compared</th></tr>
+  {% for r in rows %}<tr>
+    <td><b>{{ r.zone_name }}</b></td><td class="n">{{ r.business_count }}</td><td class="n">{{ r.number_of_orders }}</td>
+    <td class="n">{{ r.avg_order_total|money if r.avg_order_total is not none else '-' }}</td>
+    <td class="n">{{ r.avg_tracking_time|num(1) }}</td><td class="n">{{ r.platform_commission|money }}</td>
+    <td><div class="bar-track" role="img" aria-label="{{ r.bar }} percent of the best zone"><div class="bar-fill" style="width:{{ r.bar }}%"></div></div></td></tr>{% endfor %}
+</table></div>
+{% else %}<div class="empty">No zone data for these dates.</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}My performance{% endblock %}
+{% block body %}
+<h1>How much did I earn, how fast am I, and how do customers rate me?</h1>
+{{ m.range_form(f, t) }}
+<div class="grid g4" style="margin:1rem 0">
+  <div class="stat"><b>{{ earn.total_earnings|money }}</b><small>Earnings (80% of delivery fees)</small></div>
+  <div class="stat"><b>{{ earn.completed_deliveries }}</b><small>Completed deliveries</small></div>
+  <div class="stat"><b>{{ avg_time|num(1) if avg_time is not none else '-' }}</b><small>Average minutes pick-up to delivery</small></div>
+  <div class="stat"><b>{{ rating.avg_rating|num(2) if rating.avg_rating is not none else '-' }}</b><small>Average rating ({{ rating.ratings_count }} ratings, all time)</small></div>
+</div>
+{% if rating.ratings_count %}<div class="card">
+  {% for label, n in [('5 stars', rating.five_star), ('4 stars', rating.four_star), ('3 stars', rating.three_star), ('2 stars', rating.two_star), ('1 star', rating.one_star)] %}
+  <div style="display:grid;grid-template-columns:4.5rem 1fr 2rem;gap:.6rem;align-items:center"><span>{{ label }}</span>
+   <div class="bar-track"><div class="bar-fill" style="width:{{ (n / rating.ratings_count * 100)|round }}%"></div></div><span class="n">{{ n }}</span></div>{% endfor %}</div>{% endif %}
+<h2>Delivery history</h2>
+{% if hist %}<div class="scroll"><table><tr><th>Order</th><th>Business</th><th>Status</th><th>Assigned</th><th>Picked up</th><th>Delivered</th><th class="n">Minutes</th></tr>
+{% for h in hist %}<tr><td>#{{ h.order_id }}</td><td>{{ h.business_name }}</td><td>{{ m.tag(h.status) }}</td><td>{{ h.assigned_at|dt }}</td>
+ <td>{{ h.picked_up_at|dt }}</td><td>{{ h.delivered_at|dt }}</td><td class="n">{{ h.tracking_time if h.tracking_time is not none else '-' }}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No finished delivery in this period.</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Home{% endblock %}
+{% block body %}
+<h1>Hello, {{ p.customer_name }}</h1>
+<div class="grid g3">
+  <div class="stat"><small>Wallet balance</small><b>{{ p.wallet_balance|money }}</b></div>
+  <div class="stat"><small>Active address</small><b style="font-size:1.05rem">{{ p.active_address or 'None yet' }}</b><small>{{ p.active_zone or '' }}</small></div>
+  <div class="stat"><small>Cart</small><b>{{ cart_items }} item{{ 's' if cart_items != 1 }}</b><a href="{{ url_for('customer.cart') }}">Open cart</a></div>
+</div>
+{% if not p.active_address_id %}<div class="flash warn" style="margin-top:1rem">Add an address first. Businesses and carts depend on your active address. <a href="{{ url_for('customer.addresses') }}">Add an address</a></div>{% endif %}
+<form class="row card" method="get" action="{{ url_for('customer.browse') }}" style="margin-top:1rem">
+  <label style="flex:1;min-width:220px">Search businesses by name<input name="q" placeholder="Pizza, pharmacy..." maxlength="100" required></label>
+  <button type="submit">Search</button><a class="btn alt" href="{{ url_for('customer.browse') }}">Browse by category</a>
+</form>
+<h2>Latest orders</h2>
+{% if orders %}<div class="scroll"><table><tr><th>Order</th><th>Date</th><th>Status</th><th class="n">Total</th></tr>
+{% for o in orders %}<tr><td>#{{ o.order_id }}</td><td>{{ o.order_date|dt }}</td><td>{{ m.tag(o.status) }}</td><td class="n">{{ o.total_amount|money }}</td></tr>{% endfor %}</table></div>
+<p><a href="{{ url_for('customer.orders') }}">See all orders and track them</a></p>
+{% else %}<div class="empty">No order yet. Search a business to start.</div>{% endif %}
+{% endblock %}

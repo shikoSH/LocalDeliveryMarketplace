@@ -385,6 +385,10 @@ BEGIN
     DROP FUNCTION IF EXISTS dbo.Nearby_Businesses_By_Category;
     DROP FUNCTION IF EXISTS dbo.Platform_Health_Snapshot;
     DROP FUNCTION IF EXISTS dbo.SuspendRefunds;
+    DROP FUNCTION IF EXISTS dbo.Expected_Total;
+    DROP FUNCTION IF EXISTS dbo.GetBusinessType;
+    DROP FUNCTION IF EXISTS dbo.IsBusinessOpen;
+    DROP FUNCTION IF EXISTS dbo.GetBusinessStatus;
 
     DROP PROCEDURE IF EXISTS createAllTables;
     DROP PROCEDURE IF EXISTS dropAllTables;
@@ -653,7 +657,7 @@ GO
 CREATE VIEW RiderPerformanceSummary
 AS
 SELECT R.rider_id, 
-       CONCAT(U.first_name, ' ' + U.middle_name, ' ' + U.last_name) AS rider_name, 
+       U.first_name + ' ' + U.last_name AS rider_name, 
        Z.zone_name, 
        COUNT(D.delivered_at) AS completed_deliveries, 
        AVG(CAST(D.rider_rating AS DECIMAL(3,2))) AS avg_rating 
@@ -661,7 +665,7 @@ FROM Rider R
 INNER JOIN Users U ON U.user_id = R.rider_id
 INNER JOIN Zone Z ON Z.zone_id = R.zone_id
 LEFT OUTER JOIN Delivery D ON R.rider_id = D.rider_id
-GROUP BY R.rider_id, U.first_name, U.middle_name, U.last_name, Z.zone_name
+GROUP BY R.rider_id, U.first_name, U.last_name, Z.zone_name
 GO
 
 
@@ -721,10 +725,11 @@ Output: Table (zone_id, zone_name, delivery_count, avg_tracking_time)
 GO
 CREATE VIEW ZoneDeliveryPerformance
 AS 
-SELECT Z.zone_id, Z.zone_name, COUNT(D.delivery_id) AS delivery_count, AVG(D.tracking_time) AS avg_tracking_time
+SELECT Z.zone_id, Z.zone_name, COUNT(D.delivery_id) AS delivery_count,
+       CAST(AVG(CAST(D.tracking_time AS DECIMAL(10,2))) AS DECIMAL(10,2)) AS avg_tracking_time
 FROM Zone Z
-LEFT OUTER JOIN Business B ON B.zone_id = Z.zone_id
-LEFT OUTER JOIN SubOrder S ON S.business_id = B.business_id
+LEFT OUTER JOIN Orders O ON O.zone_id = Z.zone_id
+LEFT OUTER JOIN SubOrder S ON S.order_id = O.order_id
 LEFT OUTER JOIN Delivery D ON D.suborder_id = S.suborder_id AND D.delivered_at IS NOT NULL
 GROUP BY Z.zone_id, Z.zone_name
 GO
@@ -1581,18 +1586,15 @@ RETURN
 (
     SELECT TOP 5 ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC, R.rider_id) AS rider_rank, 
            R.rider_id, 
-           CONCAT(U.first_name, ' ' + U.middle_name, ' ' + U.last_name) AS rider_name, 
+           U.first_name + ' ' + U.last_name AS rider_name, 
            COUNT(*) AS completed_delivery_count
     FROM Delivery D
     INNER JOIN Rider R ON R.rider_id = D.rider_id
-    INNER JOIN User U ON U.user_id = R.rider_id
-    INNER JOIN Zone Z ON Z.zone_id = R.zone_id
-    INNER JOIN Admin A ON Z.zone_id = A.zone_id
+    INNER JOIN Users U ON U.user_id = R.rider_id
     WHERE D.delivered_at IS NOT NULL 
-    AND A.role IN ('Super Admin', 'Zone Admin')
     AND (CAST(D.delivered_at AS DATE) BETWEEN @from_date AND @to_date) 
     AND @from_date <= @to_date 
-    GROUP BY R.rider_id, U.first_name, U.middle_name, U.last_name
+    GROUP BY R.rider_id, U.first_name, U.last_name
     ORDER BY completed_delivery_count DESC, R.rider_id
 );
 GO 
@@ -1776,6 +1778,9 @@ BEGIN
 	IF @opening_hour IS NULL OR @closing_hour IS NULL OR @phone IS NULL
 		RETURN -1;
 
+	IF NOT EXISTS (SELECT 1 FROM Business WHERE business_id = @business_id)
+		RETURN -1;
+
 	IF @phone LIKE '%[^0-9]%' OR LEN(@phone) != 11
 		RETURN -1;
 
@@ -1831,7 +1836,7 @@ BEGIN
 	IF @name IS NULL OR @category IS NULL OR @price IS NULL OR @is_available IS NULL
 		RETURN -1;
 	
-	IF @price <= 0
+	IF @price <= 0 OR LTRIM(RTRIM(@name)) = '' OR @business_status IS NULL
 		RETURN -1;
 
 	IF @business_status = 'Suspended'
@@ -1839,6 +1844,9 @@ BEGIN
 
 	IF @product_id IS NOT NULL
 		BEGIN
+			IF @product_business_id IS NULL
+				RETURN -1;
+
 			IF @product_business_id != @business_id
 				RETURN -3;
 
@@ -1888,7 +1896,7 @@ BEGIN
 
 	SET @business_status = dbo.GetBusinessStatus(@business_id);
 
-	IF @is_available IS NULL
+	IF @is_available IS NULL OR @business_id IS NULL
 		RETURN -1;
 
 	IF @business_status = 'Suspended' AND @is_available = 1
@@ -1929,7 +1937,7 @@ BEGIN
 	FROM Product p
 	WHERE p.product_id = @product_id;
 
-	IF @discount_amount IS NULL OR @discount_amount < 0 OR 2 * @discount_amount > @price
+	IF @price IS NULL OR @discount_amount IS NULL OR @discount_amount < 0 OR 2 * @discount_amount > @price
 		RETURN -1;
 
 	UPDATE p
@@ -2012,6 +2020,7 @@ RETURN
     FROM Feedback F 
     INNER JOIN SubOrder S ON S.suborder_id = F.suborder_id
     WHERE S.business_id = @business_id
+    AND EXISTS (SELECT 1 FROM Business WHERE business_id = @business_id)
 );
 -- COUNT(*) because id is unique so it must exist for feedback row to exist
 GO
@@ -2111,12 +2120,6 @@ Begin
     begin
         return -3;
     end
-    
-    --if it is all spaces or NULL, reject it 
-    IF @description IS NULL OR LTRIM(RTRIM(@description)) = ''
-    BEGIN
-        RETURN -1;
-    END
 
     -- reject if the address belongs to a Placed or In Progress order
     if exists (
@@ -2140,7 +2143,7 @@ Begin
     if @action = 'Update'
     begin
         -- the new zone must exist
-        if not exists (select * from Zone where zone_id = @zone_id)
+        if @zone_id is null or not exists (select * from Zone where zone_id = @zone_id)
         begin
             return -1;
         end
@@ -2162,7 +2165,7 @@ Begin
         -- reject if the address is used by any cart (any status)
         if exists (select * from Cart where address_id = @address_id)
         begin
-            return -1;
+            return -4;
         end
 
         delete from Address
@@ -2652,6 +2655,7 @@ begin
     select @customer_id = customer_id from Cart where cart_id = @cart_id;
 
     if exists (select * from Blacklist where customer_id = @customer_id)
+       or exists (select * from Users where user_id = @customer_id and account_status = 'Blacklisted')
     begin
         return -3; -- Customer is Blacklisted
     end
@@ -2747,7 +2751,7 @@ begin
     -- now other verificstions
     if @payment_method = 'Card'
     begin
-        if not exists (select * from Card where card_id = @card_id and customer_id = @customer_id)
+        if not exists (select * from Card where card_id = @card_id and customer_id = @customer_id and expiration_date >= cast(getdate() as date))
         begin
             return -7; 
         end
@@ -2770,6 +2774,10 @@ begin
         return -8;
     end
 
+
+    set xact_abort on;
+    begin try
+    begin transaction;
 
     -- copying each effective unit price into CartItem.unit_price since there may be updates in the price
     update ci
@@ -2852,7 +2860,13 @@ begin
     -- Chang ethe cart to checked out
     update Cart set status = 'Checked Out' where cart_id = @cart_id;
 
-    return 0; 
+    commit transaction;
+    return 0;
+    end try
+    begin catch
+        if @@trancount > 0 rollback transaction;
+        return -1;
+    end catch
 end
 GO
 
@@ -2895,12 +2909,9 @@ Begin
         return -1; -- Order does not exist ------------------------------------------------------------------------------------------------------------------------------------------------ -1 (invalid input) is fine here
     end
 
-    -- reject if the order is Cancelled or any SubOrder is Picked Up or Delivered
-    if exists (
-        select * from Orders o
-        inner join SubOrder so on o.order_id = so.order_id
-        where o.order_id = @order_id 
-        and (o.status = 'Cancelled' or so.status in ('Picked Up', 'Delivered')))
+    -- reject if the order is Cancelled or Delivered, or any SubOrder is Picked Up or Delivered
+    if exists (select * from Orders where order_id = @order_id and status in ('Cancelled', 'Delivered'))
+       or exists (select * from SubOrder where order_id = @order_id and status in ('Picked Up', 'Delivered'))
     begin
         return -4; 
     end
@@ -3008,6 +3019,12 @@ begin
     select @customer_id = c.customer_id
     from Orders o inner join Cart c on o.cart_id = c.cart_id
     where o.order_id = @order_id;
+
+    if exists (select * from Blacklist where customer_id = @customer_id)
+       or exists (select * from Users where user_id = @customer_id and account_status = 'Blacklisted')
+    begin
+        return -3;
+    end
 
     if not exists (select * from Address where address_id = @address_id and customer_id = @customer_id)
     begin
@@ -3220,7 +3237,7 @@ begin
     from Orders o 
     inner join Cart c on o.cart_id = c.cart_id 
     inner join Zone z on o.zone_id = z.zone_id
-    inner join Payment p on o.order_id = p.order_id
+    left join Payment p on o.order_id = p.order_id
     where c.customer_id = @customer_id 
 
     return;
@@ -3248,7 +3265,16 @@ CREATE PROCEDURE Toggle_Favorite
 	@item_type   VARCHAR(20)
 AS
 BEGIN
-	IF @item_type IS NULL OR @item_type NOT IN ('Business', 'Product')
+	IF @item_type IS NULL OR @item_type NOT IN ('Business', 'Product') OR @item_id IS NULL
+		RETURN -1;
+
+	IF @customer_id IS NULL OR NOT EXISTS (SELECT 1 FROM Customer WHERE customer_id = @customer_id)
+		RETURN -3;
+
+	IF @item_type = 'Business' AND NOT EXISTS (SELECT 1 FROM Business WHERE business_id = @item_id)
+		RETURN -1;
+
+	IF @item_type = 'Product' AND NOT EXISTS (SELECT 1 FROM Product WHERE product_id = @item_id)
 		RETURN -1;
 
 	IF @item_type = 'Business'
@@ -3336,7 +3362,7 @@ RETURNS TABLE
 AS 
 RETURN 
 (
-    SELECT TOP 10 P.product_id, P.name AS product_name, B.name AS business_name, P.category, P.price AS final_price
+    SELECT TOP 10 P.product_id, P.name AS product_name, B.name AS business_name, P.category, P.price - P.discount_amount AS final_price
     FROM Product P
     INNER JOIN Business B ON P.business_id = B.business_id
     INNER JOIN (SELECT  P1.category, COUNT(*) AS order_count
@@ -3417,7 +3443,7 @@ AS
 RETURN 
 (
     SELECT D.delivery_id, O.order_id, S.suborder_id, B.name AS business_name, 
-           CONCAT(U.first_name, ' ' + U.middle_name, ' ' + U.last_name) AS customer_name, 
+           U.first_name + ' ' + U.last_name AS customer_name, 
            A.description AS address_description, Z.zone_name, S.status, D.assigned_at
     FROM Delivery D 
     INNER JOIN SubOrder S ON S.suborder_id = D.suborder_id
@@ -3425,7 +3451,7 @@ RETURN
     INNER JOIN Business B ON B.business_id = S.business_id
     INNER JOIN Cart C ON C.cart_id = O.cart_id
     INNER JOIN Users U ON U.user_id = C.customer_id
-    INNER JOIN Address A ON A.customer_id = C.customer_id AND A.is_active = 1
+    INNER JOIN Address A ON A.address_id = C.address_id
     INNER JOIN Zone Z ON A.zone_id = Z.zone_id
     WHERE D.rider_id = @rider_id
     AND S.status IN ('Assigned', 'Picked Up')
@@ -3574,7 +3600,7 @@ RETURN
     SELECT 
         COUNT(D.delivery_id) AS completed_deliveries, 
         ISNULL(SUM(S.delivery_fee), 0) AS total_delivery_fees, 
-        ISNULL(SUM(S.delivery_fee), 0) * 0.8 AS total_earnings
+        CAST(ISNULL(SUM(S.delivery_fee), 0) * 0.8 AS DECIMAL(10,2)) AS total_earnings
     FROM Delivery D
     INNER JOIN SubOrder S ON D.suborder_id = S.suborder_id
     WHERE CAST(D.delivered_at AS DATE) BETWEEN @from_date AND @to_date
@@ -3756,10 +3782,17 @@ RETURNS TABLE
 AS
 RETURN
 (   
-    SELECT O.order_id, dbo.Expected_Total(O.order_id) AS expected_total, O.total_amount AS order_total, P.payment_amount
-    FROM Orders O 
-    LEFT OUTER JOIN Payment P ON P.order_id = O.order_id
-    WHERE dbo.Expected_Total(O.order_id) <> O.total_amount OR P.payment_amount <> O.total_amount OR P.payment_amount IS NULL  
+    SELECT X.order_id, X.expected_total, X.order_total, X.payment_amount
+    FROM (
+        SELECT O.order_id,
+               CAST(ISNULL((SELECT SUM(S.total_price + S.delivery_fee) FROM SubOrder S WHERE S.order_id = O.order_id), 0)
+                    - O.discount_amount AS DECIMAL(10,2)) AS expected_total,
+               O.total_amount AS order_total,
+               P.amount AS payment_amount
+        FROM Orders O
+        LEFT OUTER JOIN Payment P ON P.order_id = O.order_id
+    ) X
+    WHERE X.expected_total <> X.order_total OR X.payment_amount <> X.order_total OR X.payment_amount IS NULL
 );
 GO
 
@@ -3870,7 +3903,7 @@ RETURN
             WHERE CAST(order_date AS DATE) = CAST(GETDATE() AS DATE)) 
             AS orders_today, 
 
-            (SELECT AVG(tracking_time)
+            (SELECT CAST(AVG(CAST(tracking_time AS DECIMAL(10,2))) AS DECIMAL(10,2))
             FROM Delivery
             WHERE CAST(assigned_at AS DATE) = CAST(GETDATE() AS DATE)) 
             AS avg_delivery_time_today, 

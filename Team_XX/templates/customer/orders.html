@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}My orders{% endblock %}
+{% block body %}
+<h1>Where is my order now, and when will it arrive?</h1>
+<p class="lead">Arrival times are estimates: the business's expected delivery time plus the real average delivery time in your zone.</p>
+{% for o in rows %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+    <div><h2 style="margin:0">Order #{{ o.order_id }}</h2><span class="muted">{{ o.order_date|dt }} · {{ o.zone_name }} · paid by {{ o.payment_method or '-' }}</span></div>
+    <div style="text-align:right">{{ m.tag(o.status) }}<br><b>{{ o.total_amount|money }}</b>{% if o.discount_amount > 0 %}<br><small class="muted">after {{ o.discount_amount|money }} voucher</small>{% endif %}</div></div>
+  {% if o.eta %}<p style="margin:.7rem 0 0"><b>Estimated arrival: {% if o.eta <= o.now %}any moment now{% else %}{{ o.eta|dt }}{% endif %}</b></p>{% endif %}
+  {% for s in o.subs %}<div style="border-top:1px solid var(--line);margin-top:.8rem;padding-top:.6rem">
+    <div style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><b>{{ s.business_name }}</b>
+      <span class="muted">{{ s.total_price|money }} + {{ s.delivery_fee|money }} delivery</span></div>
+    {{ m.stepper(s.status) }}
+    <small class="muted">{% if s.rider_name %}Rider: {{ s.rider_name }}{% else %}No rider{% endif %}
+      {% if s.picked_up_at %} · picked up {{ s.picked_up_at|dt }}{% endif %}{% if s.delivered_at %} · delivered {{ s.delivered_at|dt }}{% endif %}
+      {% if s.eta %} · arrives about {{ s.eta|dt if s.eta > o.now else 'now' }}{% endif %}</small>
+    {% if s.status == 'Delivered' %}<div class="grid g2" style="margin-top:.6rem">
+      {% if not s.has_feedback %}<form class="stack card" style="margin:0" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="feedback"><input type="hidden" name="suborder_id" value="{{ s.suborder_id }}">
+        <h3>Leave feedback for {{ s.business_name }}</h3>
+        <label>Headline *<input name="headline" maxlength="100" required></label>
+        <label>Comment<textarea name="description" maxlength="500" rows="2"></textarea></label>
+        <label>Rating *<select name="rating" required><option value="">Choose</option>{% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }} star{{ 's' if n > 1 }}</option>{% endfor %}</select></label>
+        <div><button class="sm" type="submit">Send feedback</button></div></form>
+      {% else %}<div class="muted">Thanks for your feedback on this part.</div>{% endif %}
+      {% if s.delivery_id and s.rider_rating is none %}<form class="stack card" style="margin:0" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="rider"><input type="hidden" name="suborder_id" value="{{ s.suborder_id }}">
+        <h3>Rate your rider {{ s.rider_name }}</h3>
+        <label>Rating *<select name="rider_rating" required><option value="">Choose</option>{% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }} star{{ 's' if n > 1 }}</option>{% endfor %}</select></label>
+        <div><button class="sm" type="submit">Rate rider</button></div></form>
+      {% elif s.rider_rating is not none %}<div class="muted">You rated your rider {{ s.rider_rating }} / 5.</div>{% endif %}
+    </div>{% endif %}
+  </div>{% endfor %}
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;align-items:flex-end">
+    {% if o.can_cancel %}
+    <form method="post" action="{{ url_for('customer.order_action') }}"
+      onsubmit="return confirm('Cancel order #{{ o.order_id }}? {{ 'You will get ' ~ ('%.2f'|format(o.refund|float)) ~ ' EGP back in your wallet.' if o.refund > 0 else 'You chose cash, so nothing was charged and nothing is refunded.' }} This cannot be undone.')">
+      <input type="hidden" name="form" value="cancel"><input type="hidden" name="order_id" value="{{ o.order_id }}">
+      <button class="danger" type="submit">Cancel order{% if o.refund > 0 %} (refund {{ o.refund|money }}){% endif %}</button></form>
+    {% endif %}
+    {% if addresses %}<form class="row" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="reorder"><input type="hidden" name="order_id" value="{{ o.order_id }}">
+      <label>Reorder to<select name="address_id" required>{% for a in addresses %}<option value="{{ a.address_id }}" {{ 'selected' if a.is_active }}>{{ a.description }} ({{ a.zone_name }})</option>{% endfor %}</select></label>
+      <button class="alt" type="submit">Reorder</button></form>{% endif %}
+  </div>
+</div>
+{% else %}<div class="empty">You have no order yet. <a href="{{ url_for('customer.browse') }}">Find a business</a>.</div>{% endfor %}
+{% endblock %}

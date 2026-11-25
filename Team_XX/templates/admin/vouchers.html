@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Vouchers{% endblock %}
+{% block body %}
+<h1>Vouchers</h1>
+<div class="card"><h2 style="margin-top:0">Issue a voucher</h2>
+<form class="stack" method="post" novalidate>
+  <div class="cols">
+    <label>Customer *<select name="customer_id" required><option value="">Choose a customer</option>
+      {% for c in customers %}<option value="{{ c.customer_id }}">{{ c.customer_name }} ({{ c.username }})</option>{% endfor %}</select></label>
+    <label>Promo code *<input name="promo_code" maxlength="30" required placeholder="SUMMER10"></label>
+    <label>Type *<select name="kind"><option value="percent">Percentage of the products total</option><option value="fixed">Fixed amount (EGP)</option></select></label>
+    <label>Amount *<small>1-100 for a percentage</small><input name="amount" type="number" step="0.01" min="0.01" required></label>
+    <label>Expires on *<input type="date" name="expiry_date" min="{{ today }}" required></label>
+  </div>
+  <div><button type="submit">Issue voucher</button></div>
+</form></div>
+<h2>Active vouchers</h2>
+{% if active %}<div class="scroll"><table><tr><th>Code</th><th>Customer</th><th>Discount</th><th>Expires</th></tr>
+{% for v in active %}<tr><td><b>{{ v.promo_code }}</b></td><td>{{ v.customer_name }}</td>
+  <td>{{ ('%g%%'|format(v.amount|float)) if v.is_percentage else (v.amount|money) }}</td><td>{{ v.expiry_date|d }}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="empty">No active vouchers.</div>{% endif %}
+{% endblock %}

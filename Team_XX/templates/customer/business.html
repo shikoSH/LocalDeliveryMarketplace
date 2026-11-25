@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}{{ d.business_name }}{% endblock %}
+{% block body %}
+<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
+  <div><h1>{{ d.business_name }}</h1><p class="lead">{{ d.description or '' }}</p></div>
+  <form method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Business"><input type="hidden" name="item_id" value="{{ d.business_id }}">
+    <input type="hidden" name="next" value="{{ request.path }}"><button class="alt" type="submit">{{ 'Remove from favorites' if fav_business else 'Add to favorites' }}</button></form>
+</div>
+<div class="grid g4">
+  <div class="stat"><span class="tag {{ 'open' if d.is_open_now else 'closed' }}">{{ 'Open now' if d.is_open_now else 'Closed now' }}</span><br><small>{{ d.opening_hour|hm }} - {{ d.closing_hour|hm }}</small></div>
+  <div class="stat"><b>{{ d.expected_delivery_time }} min</b><small>Expected delivery</small></div>
+  <div class="stat"><b>{{ m.stars(rating.avg_rating if rating else None) }}</b><small>{{ rating.ratings_count if rating else 0 }} rating{{ 's' if (rating.ratings_count if rating else 0) != 1 }}</small></div>
+  <div class="stat"><b style="font-size:1.1rem">{{ d.zone_name }}</b><small>{% if d.link_website %}{{ d.link_website }}{% else %}Zone{% endif %}</small></div>
+</div>
+{% if not can_order %}<div class="flash warn" style="margin-top:1rem">This business delivers in {{ d.zone_name }}, but your active address is in {{ p.active_zone or 'no zone yet' }}. Change your active address to order here.</div>{% endif %}
+{% if not d.is_open_now %}<div class="flash warn" style="margin-top:1rem">This business is closed now. You can add products, but checkout only works while it is open.</div>{% endif %}
+<h2>Products</h2>
+{% if products %}<div class="grid g2">{% for pr in products %}
+<div class="card" style="margin:0"><div style="display:flex;justify-content:space-between;gap:.5rem"><h3>{{ pr.product_name }}</h3><b>{{ pr.final_price|money }}</b></div>
+  <p class="muted" style="margin:.1rem 0 .5rem">{{ pr.category }}{% if pr.description %} · {{ pr.description }}{% endif %}{% if pr.discount_amount > 0 %} · <s>{{ pr.price|money }}</s> <span class="tag open">Offer</span>{% endif %}</p>
+  <form class="row" method="post" action="{{ url_for('customer.cart_add') }}"><input type="hidden" name="product_id" value="{{ pr.product_id }}"><input type="hidden" name="next" value="{{ request.path }}">
+    <label>Qty<input type="number" name="quantity" min="1" max="10" value="1" style="width:4.5rem" required></label>
+    <label style="flex:1;min-width:120px">Note<input name="notes" maxlength="255" placeholder="Optional"></label>
+    <button class="sm" type="submit" {{ 'disabled' if not can_order }}>Add to cart</button></form>
+  <form method="post" action="{{ url_for('customer.favorite') }}" style="margin-top:.4rem"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ pr.product_id }}">
+    <input type="hidden" name="next" value="{{ request.path }}"><button class="sm alt" type="submit">{{ 'Remove favorite' if pr.product_id in fav_products else 'Add to favorites' }}</button></form>
+</div>{% endfor %}</div>
+{% else %}<div class="empty">No product is available right now.</div>{% endif %}
+{% endblock %}
