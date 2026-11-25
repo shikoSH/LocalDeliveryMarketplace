@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}My performance{% endblock %}
+{% block body %}
+{{ m.head('chart', 'Rider', 'How much did I earn, how fast am I, and how do customers rate me?') }}
+{{ m.range_form(f, t) }}
+<div class="grid g3" style="margin:.4rem 0 1.2rem">
+  <div class="stat hero"><div class="ico">{{ i.icon('wallet') }}</div><div><b>{{ earn.total_earnings|money }}</b><small>You earned (80% of {{ earn.total_delivery_fees|money }} in delivery fees)</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('flag') }}</div><div><b>{{ earn.completed_deliveries }}</b><small>Completed deliveries in this period</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('clock') }}</div><div><b>{% if avg_time is not none %}{{ avg_time|num(1) }} <small style="display:inline">min</small>{% else %}—{% endif %}</b><small>Average from pick-up to door</small></div></div>
+</div>
+
+<div class="split">
+  <div>
+    <h2 style="margin-top:0">Delivery history</h2>
+    {% if hist %}<div class="scroll"><table><tr><th>Order</th><th>Business</th><th>Status</th><th>Assigned</th><th>Picked up</th><th>Delivered</th><th class="n">Minutes</th></tr>
+    {% for h in hist %}<tr><td>#{{ h.order_id }}</td><td><b>{{ h.business_name }}</b></td><td>{{ m.tag(h.status) }}</td><td>{{ h.assigned_at|dt }}</td><td>{{ h.picked_up_at|dt }}</td>
+     <td>{{ h.delivered_at|dt }}</td><td class="n">{{ h.tracking_time if h.tracking_time is not none else '—' }}</td></tr>{% endfor %}</table></div>
+    {% else %}{{ m.empty('flag', 'No finished delivery in this period', 'Choose a wider period.') }}{% endif %}
+  </div>
+  <div class="card framed">
+    <p class="card-title">{{ i.icon('star') }}<b>Customer ratings (all time)</b></p>
+    {% if rating.ratings_count %}
+      <div style="text-align:center;margin:.4rem 0 1rem">
+        <div class="display" style="font-size:3rem;line-height:1">{{ rating.avg_rating|num(1) }}</div>
+        {{ m.stars(rating.avg_rating) }}
+        <p class="muted" style="margin:.2rem 0 0">{{ rating.ratings_count }} rating{{ 's' if rating.ratings_count != 1 }}</p>
+      </div>
+      {{ m.dist([('5 stars', rating.five_star), ('4 stars', rating.four_star), ('3 stars', rating.three_star), ('2 stars', rating.two_star), ('1 star', rating.one_star)], rating.ratings_count) }}
+    {% else %}{{ m.empty('star', 'No ratings yet', 'Customers rate you after a delivery.') }}{% endif %}
+  </div>
+</div>
+{% endblock %}

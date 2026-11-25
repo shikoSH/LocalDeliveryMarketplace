@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Browse{% endblock %}
+{% block body %}
+{% set lead %}{% if p.active_zone %}Showing businesses for <b>{{ p.active_address }}</b> in {{ p.active_zone }}.{% else %}Add an address to see businesses near you.{% endif %}{% endset %}
+{{ m.head('search', 'Browse', 'Find a business', lead) }}
+
+<div class="card">
+  <form class="row" method="get" role="search">
+    <label class="grow">Search by name<input name="q" value="{{ q }}" maxlength="100" placeholder="Koshary, pizza, pharmacy…"></label>
+    <button type="submit">{{ i.icon('search') }} Search</button>
+  </form>
+  <p class="muted" style="margin:1rem 0 .5rem;font-weight:700;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase">Or browse by product category</p>
+  <div class="chips">{% for c in cats %}<a class="chip {{ 'on' if c == category }}" href="{{ url_for('customer.browse', category=c) }}">{{ c }}</a>{% endfor %}</div>
+</div>
+
+{% if mode %}
+<h2>{{ 'Results for "' ~ q ~ '"' if mode == 'search' else 'Businesses selling ' ~ category }} <span class="tag">{{ rows|length }}</span></h2>
+{% if mode == 'category' %}<p class="muted" style="margin-top:-.4rem">Businesses in your zone come first, then the ones with the fastest real delivery times.</p>{% endif %}
+{% if rows %}<div class="grid g3">
+{% for r in rows %}{% set far = mode == 'category' and not r.same_zone %}
+<a class="biz {{ 'far' if far }}" href="{{ url_for('customer.business', bid=r.business_id) }}">
+  <div class="cover"><span class="tag {{ 'open' if r.is_open_now else 'closed' }}">{{ 'Open now' if r.is_open_now else 'Closed now' }}</span>
+    <span class="badge">{{ i.icon('store') }}</span></div>
+  <div class="body">
+    <h3>{{ r.business_name }}</h3>
+    <div>{{ m.stars(r.avg_rating) }}{% if r.number_of_ratings %} <small class="muted">({{ r.number_of_ratings }})</small>{% endif %}</div>
+    <div class="row"><span>{{ i.icon('map') }} {{ r.zone_name }}</span><span>{{ i.icon('clock') }} about {{ r.expected_delivery_time }} min</span></div>
+    {% if far %}<span class="tag warn" style="justify-self:start;margin-top:.3rem">{{ i.icon('alert') }} Other zone: cannot deliver to you</span>{% endif %}
+  </div>
+</a>{% endfor %}</div>
+{% else %}{{ m.empty('search', 'Nothing found', 'No active business matches your search in your zone.' if mode == 'search' else 'No business sells this category right now.') }}{% endif %}
+{% else %}
+{{ m.empty('pot', 'What are you craving?', 'Search by name, or pick a category to see who sells it near you.') }}
+{% endif %}
+{% endblock %}

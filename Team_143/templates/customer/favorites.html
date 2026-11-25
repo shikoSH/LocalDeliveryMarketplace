@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Favorites{% endblock %}
+{% block body %}
+{{ m.head('heart', 'Favorites', 'The things you love, and some you might', 'Tap the heart on any business or product page to add it here.') }}
+
+<h2>My favorite businesses</h2>
+{% if businesses %}<div class="grid g3">{% for b in businesses %}
+<div class="card" style="margin:0;display:flex;justify-content:space-between;align-items:center;gap:.6rem">
+  <a class="cell-main" style="text-decoration:none;color:inherit" href="{{ url_for('customer.business', bid=b.item_id) }}"><span class="tag gold">{{ i.icon('store') }}</span><b>{{ b.item_name }}</b></a>
+  <form method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Business"><input type="hidden" name="item_id" value="{{ b.item_id }}">
+    <button class="fav-btn on" type="submit" aria-label="Remove {{ b.item_name }} from favorites" title="Remove from favorites">{{ i.icon('heart') }}</button></form>
+</div>{% endfor %}</div>
+{% else %}{{ m.empty('store', 'No favorite business yet', 'Open a business and tap the heart.') }}{% endif %}
+
+<h2>My favorite products</h2>
+{% if products %}<div class="grid g2">{% for p in products %}
+<div class="card prod {{ '' if p.is_orderable else 'off' }}" style="margin:0;align-items:center">
+  <div class="pic">{{ p.product_name[:1] }}</div>
+  <div><b>{{ p.product_name }}</b><small class="muted" style="display:block">{{ p.business_name }}</small>
+    {% if not p.is_orderable %}<span class="tag Cancelled">Not orderable now</span>{% endif %}</div>
+  <div class="btn-row">
+    {% if p.is_orderable %}<form class="inline" method="post" action="{{ url_for('customer.cart_add') }}"><input type="hidden" name="product_id" value="{{ p.product_id }}"><input type="hidden" name="quantity" value="1">
+      <input type="hidden" name="next" value="/customer/favorites"><button class="sm" type="submit">{{ i.icon('cart') }} Add 1</button></form>{% endif %}
+    <form class="inline" method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ p.product_id }}">
+      <button class="fav-btn on" type="submit" aria-label="Remove {{ p.product_name }} from favorites" title="Remove from favorites">{{ i.icon('heart') }}</button></form>
+  </div>
+</div>{% endfor %}</div>
+{% else %}{{ m.empty('heart', 'No favorite product yet', '') }}{% endif %}
+
+<div class="ornament" aria-hidden="true"><i></i></div>
+<div class="page-head" style="margin-bottom:.8rem">
+  <div class="seal">{{ i.icon('pot') }}</div>
+  <div><p class="eyebrow">Sanaa recommends</p><h2 class="plain" style="margin:0">Recommended for you</h2>
+  <p class="muted" style="margin:0">Products you have not tried yet, from the categories you order most, in your active zone.</p></div>
+</div>
+{% if recs %}<div class="grid g2">{% for r in recs %}
+<div class="card prod" style="margin:0;align-items:center">
+  <div class="pic">{{ r.product_name[:1] }}</div>
+  <div><b>{{ r.product_name }}</b><small class="muted" style="display:block">{{ r.business_name }} · {{ r.category }}</small><span class="price" style="font-size:1rem">{{ r.final_price|money }}</span></div>
+  <div class="btn-row">
+    <form class="inline" method="post" action="{{ url_for('customer.cart_add') }}"><input type="hidden" name="product_id" value="{{ r.product_id }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="next" value="/customer/favorites"><button class="sm" type="submit">{{ i.icon('cart') }} Add 1</button></form>
+    <form class="inline" method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ r.product_id }}"><button class="fav-btn" type="submit" aria-label="Add {{ r.product_name }} to favorites" title="Add to favorites">{{ i.icon('heart') }}</button></form>
+  </div>
+</div>{% endfor %}</div>
+{% else %}{{ m.empty('pot', 'No recommendations yet', 'Order a few times and Sanaa will start suggesting dishes.') }}{% endif %}
+{% endblock %}

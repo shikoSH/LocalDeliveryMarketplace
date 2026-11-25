@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Approvals{% endblock %}
+{% block body %}
+{{ m.head('inbox', 'Governance', 'Businesses awaiting approval',
+   'Approve a business to let it sell. Reject it and the partner can fix the details and register again.') }}
+{% if rows %}
+<div class="grid g2">
+  {% for r in rows %}
+  <div class="card framed decision" style="margin:0">
+    <div class="spread">
+      <div class="cell-main"><span class="tag gold">{{ m.type_icon(r.business_type) }} {{ r.business_type }}</span></div>
+      <span class="tag Pending">{{ i.icon('clock') }} Pending</span>
+    </div>
+    <h3 style="font-size:1.3rem;margin:0">{{ r.business_name }}</h3>
+    <div class="meta">
+      <span>{{ i.icon('map') }} Zone <b>{{ r.zone_name }}</b></span>
+      <span>{{ i.icon('user') }} Partner <b>{{ r.partner_name }}</b></span>
+    </div>
+    {% if r.manageable %}
+    <form method="post" class="btn-row">
+      <input type="hidden" name="business_id" value="{{ r.business_id }}"><input type="hidden" name="business_name" value="{{ r.business_name }}">
+      <button name="action" value="approve" class="ok">{{ i.icon('check') }} Approve</button>
+      <button name="action" value="reject" class="danger alt" onclick='return confirm({{ ("Reject " ~ r.business_name ~ "? The partner will see it as Rejected and must register it again.")|tojson }})'>{{ i.icon('x') }} Reject</button>
+    </form>
+    {% else %}
+    <div class="note info" style="margin:0">{{ i.icon('map') }}<span>This business is in {{ r.zone_name }}, outside your zone. Its Zone Admin or a Super Admin decides.</span></div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}{{ m.empty('check', 'All caught up', 'Nothing is waiting for approval right now.') }}{% endif %}
+{% endblock %}

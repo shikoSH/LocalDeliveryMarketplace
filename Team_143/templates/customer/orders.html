@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}My orders{% endblock %}
+{% block body %}
+{{ m.head('receipt', 'My orders', 'Where is my order now, and when will it arrive?',
+   'Arrival times are estimates: the business\'s expected delivery time plus the real average delivery time in your zone.') }}
+{% for o in rows %}
+<div class="card order">
+  <div class="order-head">
+    <div><h2>Order #{{ o.order_id }}</h2>
+      <span class="muted">{{ o.order_date|dt }} · {{ o.zone_name }} · {{ o.number_of_suborders }} part{{ 's' if o.number_of_suborders != 1 }} · paid by {{ o.payment_method or '—' }}</span></div>
+    <div class="order-total">{{ m.tag(o.status) }}<b>{{ o.total_amount|money }}</b>
+      {% if o.discount_amount > 0 %}<small class="muted">after {{ o.discount_amount|money }} voucher</small>{% endif %}
+      {% if o.refunded_amount and o.refunded_amount > 0 %}<small style="display:block;color:var(--ok);font-weight:700">{{ o.refunded_amount|money }} refunded</small>{% endif %}</div>
+  </div>
+  {% if o.eta %}<div class="eta">{{ i.icon('clock') }}<span>Estimated arrival: <b>{% if o.eta <= o.now %}any moment now{% else %}{{ o.eta|dt }}{% endif %}</b></span></div>{% endif %}
+  {% for s in o.subs %}<div class="part">
+    <div class="spread"><span class="cell-main">{{ i.icon('store') }}<b>{{ s.business_name }}</b></span>
+      <span class="muted">{{ s.total_price|money }} + {{ s.delivery_fee|money }} delivery</span></div>
+    {{ m.stepper(s.status) }}
+    <small class="muted">{% if s.rider_name %}{{ i.icon('bike') }} Rider {{ s.rider_name }}{% else %}No rider{% endif %}
+      {% if s.picked_up_at %} · picked up {{ s.picked_up_at|dt }}{% endif %}{% if s.delivered_at %} · delivered {{ s.delivered_at|dt }}{% endif %}
+      {% if s.eta %} · <b style="color:var(--ink)">arrives about {{ s.eta|dt if s.eta > o.now else 'now' }}</b>{% endif %}</small>
+    {% if s.status == 'Delivered' %}<div class="grid g2" style="margin-top:.8rem">
+      {% if not s.has_feedback %}<form class="stack card" style="margin:0;background:var(--paper)" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="feedback"><input type="hidden" name="suborder_id" value="{{ s.suborder_id }}">
+        <p class="card-title" style="margin:0">{{ i.icon('star') }}<b>How was {{ s.business_name }}?</b></p>
+        <fieldset><legend>Rating *</legend><div class="rate">{% for n in [5,4,3,2,1] %}<input type="radio" id="f{{ s.suborder_id }}-{{ n }}" name="rating" value="{{ n }}" required><label for="f{{ s.suborder_id }}-{{ n }}" title="{{ n }} star{{ 's' if n > 1 }}" aria-label="{{ n }} star{{ 's' if n > 1 }}">★</label>{% endfor %}</div></fieldset>
+        <label>Headline *<input name="headline" maxlength="100" required placeholder="Hot and tasty"></label>
+        <label>Comment<textarea name="description" maxlength="500" rows="2"></textarea></label>
+        <div><button class="sm" type="submit">Send feedback</button></div></form>
+      {% else %}<div class="note good" style="margin:0">{{ i.icon('check') }}<span>Thanks for your feedback on {{ s.business_name }}.</span></div>{% endif %}
+      {% if s.delivery_id and s.rider_rating is none %}<form class="stack card" style="margin:0;background:var(--paper)" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="rider"><input type="hidden" name="suborder_id" value="{{ s.suborder_id }}">
+        <p class="card-title" style="margin:0">{{ i.icon('bike') }}<b>Rate your rider {{ s.rider_name }}</b></p>
+        <fieldset><legend>Rating *</legend><div class="rate">{% for n in [5,4,3,2,1] %}<input type="radio" id="r{{ s.suborder_id }}-{{ n }}" name="rider_rating" value="{{ n }}" required><label for="r{{ s.suborder_id }}-{{ n }}" title="{{ n }} star{{ 's' if n > 1 }}" aria-label="{{ n }} star{{ 's' if n > 1 }}">★</label>{% endfor %}</div></fieldset>
+        <div><button class="sm" type="submit">Rate rider</button></div></form>
+      {% elif s.rider_rating is not none %}<div class="note good" style="margin:0">{{ i.icon('star') }}<span>You rated your rider {{ s.rider_rating }} / 5.</span></div>{% endif %}
+    </div>{% endif %}
+  </div>{% endfor %}
+  <div class="order-foot">
+    {% if o.can_cancel %}
+    <form method="post" action="{{ url_for('customer.order_action') }}"
+      onsubmit="return confirm('Cancel order #{{ o.order_id }}? {{ 'You will get ' ~ ('%.2f'|format(o.refund|float)) ~ ' EGP back in your wallet.' if o.refund > 0 else 'You chose cash, so nothing was charged and nothing is refunded.' }} This cannot be undone.')">
+      <input type="hidden" name="form" value="cancel"><input type="hidden" name="order_id" value="{{ o.order_id }}">
+      <button class="danger" type="submit">{{ i.icon('x') }} Cancel order{% if o.refund > 0 %} · refund {{ o.refund|money }}{% endif %}</button></form>
+    {% else %}<span></span>{% endif %}
+    {% if addresses %}<form class="row" method="post" action="{{ url_for('customer.order_action') }}"><input type="hidden" name="form" value="reorder"><input type="hidden" name="order_id" value="{{ o.order_id }}">
+      <label>Reorder to<select name="address_id" required>{% for a in addresses %}<option value="{{ a.address_id }}" {{ 'selected' if a.is_active }}>{{ a.description }} ({{ a.zone_name }})</option>{% endfor %}</select></label>
+      <button class="alt" type="submit">{{ i.icon('refresh') }} Reorder</button></form>{% endif %}
+  </div>
+</div>
+{% else %}{{ m.empty('receipt', 'You have no order yet', '<a href="' ~ url_for('customer.browse') ~ '">Find a business</a> and place your first one.') }}{% endfor %}
+{% endblock %}

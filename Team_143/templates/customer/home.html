@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Home{% endblock %}
+{% block body %}
+<section class="welcome">
+  <img class="pot" src="{{ url_for('static', filename='logo-mark.svg') }}" alt="">
+  <p style="margin:0;font-weight:800;letter-spacing:.25em;text-transform:uppercase;font-size:.8rem;color:var(--gold)">From Sanaa's kitchen to you</p>
+  <h1 style="margin:.2rem 0">Welcome back, {{ p.customer_name }}</h1>
+  <p>{% if p.active_address %}Delivering to <b>{{ p.active_address }}</b> in {{ p.active_zone }}. What are you craving today?{% else %}Add an address so we know which businesses can reach you.{% endif %}</p>
+  <form method="get" action="{{ url_for('customer.browse') }}" role="search">
+    <input name="q" placeholder="Search a restaurant or pharmacy by name" maxlength="100" required aria-label="Search businesses by name">
+    <button type="submit">{{ i.icon('search') }} Search</button>
+  </form>
+</section>
+
+{% if not p.active_address_id %}<div class="note">{{ i.icon('pin') }}<span>Add an address first. Businesses and carts depend on your active address. <a href="{{ url_for('customer.addresses') }}">Add an address</a></span></div>{% endif %}
+
+<div class="grid g3" style="margin-top:1.2rem">
+  <a class="stat" style="text-decoration:none;color:inherit" href="{{ url_for('customer.cards') }}"><div class="ico">{{ i.icon('wallet') }}</div><div><small>Wallet balance</small><b>{{ p.wallet_balance|money }}</b></div></a>
+  <a class="stat" style="text-decoration:none;color:inherit" href="{{ url_for('customer.addresses') }}"><div class="ico">{{ i.icon('pin') }}</div><div><small>Active address · {{ p.active_zone or 'no zone' }}</small><b style="font-size:1.1rem">{{ p.active_address or 'None yet' }}</b></div></a>
+  <a class="stat {{ 'hero' if cart_items }}" style="text-decoration:none" href="{{ url_for('customer.cart') }}"><div class="ico">{{ i.icon('cart') }}</div><div><small>My cart</small><b>{{ cart_items }} item{{ 's' if cart_items != 1 }}</b>{% if cart_items %}<small>Ready to check out →</small>{% endif %}</div></a>
+</div>
+
+{% if cats %}
+<h2>Browse by category</h2>
+<div class="chips">{% for c in cats %}<a class="chip" href="{{ url_for('customer.browse', category=c) }}">{{ c }}</a>{% endfor %}</div>
+{% endif %}
+
+<h2>Latest orders</h2>
+{% if orders %}<div class="grid g3">
+{% for o in orders %}<a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('customer.orders') }}">
+  <div class="spread"><b style="font-family:var(--head);font-size:1.1rem">Order #{{ o.order_id }}</b>{{ m.tag(o.status) }}</div>
+  <p class="muted" style="margin:.3rem 0">{{ o.order_date|dt }} · {{ o.number_of_suborders }} part{{ 's' if o.number_of_suborders != 1 }}</p>
+  <b>{{ o.total_amount|money }}</b>
+</a>{% endfor %}</div>
+<p><a href="{{ url_for('customer.orders') }}">See all orders and track them →</a></p>
+{% else %}{{ m.empty('receipt', 'No order yet', 'Search a business above to start.') }}{% endif %}
+{% endblock %}

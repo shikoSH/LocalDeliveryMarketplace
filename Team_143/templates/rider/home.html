@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Rider home{% endblock %}
+{% block body %}
+{{ m.head('bike', 'Rider · ' ~ p.zone_name, 'Welcome back, ' ~ p.rider_name, 'Switch on when you are ready, and your next delivery in ' ~ p.zone_name ~ ' comes to you.') }}
+
+<div class="card framed toggle-card">
+  <div>
+    <p class="muted" style="margin:0;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.78rem">Your status</p>
+    <h2 class="plain" style="margin:.1rem 0 .2rem;font-size:1.6rem;color:{{ 'var(--ok)' if p.is_available else 'var(--muted)' }}">{{ 'Available for deliveries' if p.is_available else 'Off duty' }}</h2>
+    <p class="muted" style="margin:0">{{ 'New deliveries in your zone can be assigned to you.' if p.is_available else 'No new deliveries are assigned to you while you are off duty.' }}</p>
+  </div>
+  <form method="post"><input type="hidden" name="available" value="{{ 0 if p.is_available else 1 }}">
+    <button type="submit" class="switch {{ 'on' if p.is_available }}" role="switch" aria-checked="{{ 'true' if p.is_available else 'false' }}">
+      <span class="track"></span><b>{{ 'Go off duty' if p.is_available else 'Go available' }}</b></button></form>
+</div>
+
+<div class="grid g3">
+  <a class="stat hero" style="text-decoration:none" href="{{ url_for('rider.deliveries') }}"><div class="ico">{{ i.icon('flag') }}</div><div><b>{{ active }}</b><small>Active deliver{{ 'ies' if active != 1 else 'y' }} · open them →</small></div></a>
+  <div class="stat"><div class="ico">{{ i.icon('bike') }}</div><div><b style="font-size:1.2rem">{{ p.vehicle_type }}</b><small>Plate {{ p.plate_no }}</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('map') }}</div><div><b style="font-size:1.2rem">{{ p.zone_name }}</b><small>Your delivery zone</small></div></div>
+</div>
+<div class="grid g2" style="margin-top:1rem">
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('rider.deliveries') }}"><p class="card-title">{{ i.icon('flag') }}<b>My deliveries</b></p><small class="muted">What do I do next? Pick up and deliver step by step.</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('rider.performance') }}"><p class="card-title">{{ i.icon('chart') }}<b>My performance</b></p><small class="muted">Earnings, speed and how customers rate you.</small></a>
+</div>
+{% endblock %}

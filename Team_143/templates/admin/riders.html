@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Riders{% endblock %}
+{% block body %}
+{{ m.head('bike', 'Insights', 'Who are the best riders, and who is falling behind?', 'The top riders count completed deliveries in the period you choose.') }}
+{{ m.range_form(f, t) }}
+
+<h2>Top riders · {{ f|d }} to {{ t|d }}</h2>
+{% if top %}
+{% set first3 = top[:3] %}
+<div class="podium">
+  {% for idx in [1, 0, 2] %}{% if first3|length > idx %}{% set r = first3[idx] %}
+  <div class="place p{{ idx + 1 }}">
+    <div class="medal"><span>{{ r.rider_rank }}</span></div>
+    <b>{{ r.rider_name }}</b>
+    <small class="muted">{{ r.completed_delivery_count }} deliver{{ 'ies' if r.completed_delivery_count != 1 else 'y' }}</small>
+  </div>{% else %}<div></div>{% endif %}{% endfor %}
+</div>
+{% if top|length > 3 %}<div class="scroll"><table><tr><th>Rank</th><th>Rider</th><th class="n">Completed deliveries</th></tr>
+{% for r in top[3:] %}<tr><td>{{ r.rider_rank }}</td><td>{{ r.rider_name }}</td><td class="n">{{ r.completed_delivery_count }}</td></tr>{% endfor %}</table></div>{% endif %}
+{% else %}{{ m.empty('flag', 'No delivery was completed in this period', 'Choose a wider period.') }}{% endif %}
+
+<h2>All riders (all time)</h2>
+<p class="muted">A rider is flagged when they completed fewer deliveries than the average rider, or their rating is below 3.</p>
+<div class="scroll"><table><tr><th>Rider</th><th>Zone</th><th class="n">Completed</th><th>Average rating</th><th></th></tr>
+{% for p in perf %}<tr><td><b>{{ p.rider_name }}</b></td><td>{{ p.zone_name }}</td><td class="n">{{ p.completed_deliveries }}</td>
+  <td>{{ m.stars(p.avg_rating) }}</td><td>{% if p.behind %}<span class="tag warn">{{ i.icon('alert') }} Falling behind</span>{% else %}<span class="tag ok">{{ i.icon('check') }} On track</span>{% endif %}</td></tr>{% endfor %}</table></div>
+{% endblock %}

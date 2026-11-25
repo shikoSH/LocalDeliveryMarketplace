@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Daily revenue{% endblock %}
+{% block body %}
+{{ m.head('coins', 'Insights', 'Where did the money of this day come from?',
+   'Pick a day to see sales by zone and business type, and what the platform earned from them.') }}
+<form class="row card" method="get" style="padding:.9rem 1.1rem">
+  <label>Day<input type="date" name="day" value="{{ day|iso }}" required></label>
+  <button type="submit">{{ i.icon('calendar') }} Show day</button>
+  <span class="muted" style="align-self:center">{{ day|d }}</span>
+</form>
+{% if rows %}
+<div class="grid g4" style="margin:.4rem 0 1.2rem">
+  <div class="stat hero"><div class="ico">{{ i.icon('coins') }}</div><div><b>{{ tot.commission|money }}</b><small>The platform earned (10% commission)</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('bag') }}</div><div><b>{{ tot.gross|money }}</b><small>Gross sales of businesses</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('bike') }}</div><div><b>{{ tot.fees|money }}</b><small>Delivery fees</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('receipt') }}</div><div><b>{{ tot.subs }}</b><small>Order parts</small></div></div>
+</div>
+<div class="scroll"><table><tr><th>Zone</th><th>Business type</th><th class="n">Order parts</th><th class="n">Gross sales</th><th style="width:20%">Share of the day</th><th class="n">Delivery fees</th><th class="n">Commission</th></tr>
+{% for r in rows %}<tr><td><b>{{ r.zone_name }}</b></td><td><span class="cell-main">{{ m.type_icon(r.business_type) }} {{ r.business_type }}</span></td><td class="n">{{ r.number_of_suborders }}</td><td class="n">{{ r.gross_sales|money }}</td>
+  <td>{% set share = (r.gross_sales / tot.gross * 100) if tot.gross else 0 %}<div class="spread" style="flex-wrap:nowrap;align-items:center;gap:.5rem"><div class="bar-track" style="flex:1"><div class="bar-fill" style="width:{{ share|round }}%"></div></div><small>{{ share|round|int }}%</small></div></td>
+  <td class="n">{{ r.delivery_fees|money }}</td><td class="n"><b>{{ r.platform_commission|money }}</b></td></tr>{% endfor %}
+<tr class="total"><td colspan="2">Day total</td><td class="n">{{ tot.subs }}</td><td class="n">{{ tot.gross|money }}</td><td></td><td class="n">{{ tot.fees|money }}</td><td class="n">{{ tot.commission|money }}</td></tr></table></div>
+<p class="muted"><small>Cancelled parts are not counted.</small></p>
+{% else %}{{ m.empty('calendar', 'No orders on ' ~ (day|d), 'Pick another day.') }}{% endif %}
+{% endblock %}

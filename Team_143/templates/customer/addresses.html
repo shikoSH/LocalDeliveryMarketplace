@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Addresses{% endblock %}
+{% block body %}
+{{ m.head('pin', 'Account', 'My addresses', 'Your active address decides which businesses you can order from and where the order goes.') }}
+
+<div class="card framed">
+  <p class="card-title">{{ i.icon('plus') }}<b>Add an address</b></p>
+  <form class="row" method="post"><input type="hidden" name="form" value="add">
+    <label class="grow">Address *<input name="description" maxlength="150" required placeholder="Street, building, apartment"></label>
+    {{ m.zone_select(zones) }}<button type="submit">{{ i.icon('plus') }} Add address</button></form>
+  <p class="muted" style="margin-bottom:0"><small>A new address becomes your active address.</small></p>
+</div>
+
+{% if rows %}<div class="grid g3">{% for a in rows %}
+<div class="card addr {{ 'active' if a.is_active }}" style="margin:0">
+  <div class="spread"><div class="pin">{{ i.icon('pin') }}</div>{% if a.is_active %}<span class="tag Active">{{ i.icon('check') }} Active address</span>{% endif %}</div>
+  <h3 style="margin:.2rem 0 0">{{ a.description }}</h3>
+  <p class="muted" style="margin:0">{{ i.icon('map') }} {{ a.zone_name }}</p>
+  <div class="btn-row" style="margin-top:.3rem">
+    {% if not a.is_active %}<form method="post" class="inline"><input type="hidden" name="form" value="activate"><input type="hidden" name="address_id" value="{{ a.address_id }}"><button class="sm" type="submit">{{ i.icon('check') }} Make active</button></form>{% endif %}
+    <details><summary class="btn sm alt">{{ i.icon('edit') }} Edit</summary>
+      <form class="stack" method="post" style="margin-top:.6rem"><input type="hidden" name="form" value="update"><input type="hidden" name="address_id" value="{{ a.address_id }}">
+        <label>Address<input name="description" maxlength="150" required value="{{ a.description }}"></label>
+        {{ m.zone_select(zones, selected=a.zone_id) }}<div><button class="sm" type="submit">Save</button></div></form></details>
+    <form method="post" class="inline" onsubmit="return confirm({{ ('Delete the address ' ~ a.description ~ '? It cannot be undone. If it is used by a cart or an order, it cannot be deleted.')|tojson|forceescape }})">
+      <input type="hidden" name="form" value="delete"><input type="hidden" name="address_id" value="{{ a.address_id }}"><button class="sm danger alt" type="submit">{{ i.icon('trash') }} Delete</button></form>
+  </div>
+</div>{% endfor %}</div>
+{% else %}{{ m.empty('pin', 'You have no address yet', 'Add one above to start ordering.') }}{% endif %}
+{% endblock %}

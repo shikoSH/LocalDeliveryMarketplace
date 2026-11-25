@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% block title %}Welcome{% endblock %}
+{% block body %}
+<section class="hero-home">
+  <div>
+    <p class="kicker">Talabat</p>
+    <h1>Sanaa El-Awady's <span>kitchen door</span> to your whole neighbourhood</h1>
+    <p>Mama Sanaa always knew which koshary shop was the best and which pharmacy was open late. Now her list is yours: order from the restaurants and pharmacies of your zone, and a local rider brings it home warm.</p>
+    <div class="cta">
+      <a class="btn gold lg" href="{{ url_for('login', role='customer') }}">{{ i.icon('cart') }} Start ordering</a>
+      <a class="btn alt lg" href="{{ url_for('customer.register') }}">Create an account</a>
+    </div>
+    <div class="promise">
+      <div>{{ i.icon('pin') }}<span><b>Your zone only</b>Businesses that really deliver to you</span></div>
+      <div>{{ i.icon('clock') }}<span><b>Honest arrival times</b>Based on real delivery times</span></div>
+      <div>{{ i.icon('heart') }}<span><b>Local hands</b>Neighbourhood shops and riders</span></div>
+    </div>
+  </div>
+  <div class="art"><img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="Talabat Sanaa El-Awady logo: a copper pot with steam rising into a heart"></div>
+</section>
+
+<div class="ornament" aria-hidden="true"><i></i></div>
+<h2 class="plain" style="justify-content:center;margin-top:0">Who are you today?</h2>
+<p class="lead" style="text-align:center;margin:0 auto 1.4rem">Customers, partners and riders can register. Admins only log in.</p>
+
+<div class="arches">
+  <div class="arch tone-customer">
+    <div class="emblem">{{ i.icon('heart') }}</div>
+    <h3>Customer</h3>
+    <p>Browse restaurants and pharmacies in your zone, pay your way, and follow every order to your door.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='customer') }}">Log in</a><a class="btn alt" href="{{ url_for('customer.register') }}">Register</a></div>
+  </div>
+  <div class="arch tone-partner">
+    <div class="emblem">{{ i.icon('store') }}</div>
+    <h3>Partner</h3>
+    <p>Bring your restaurant or pharmacy online, manage the menu and offers, and see what customers love.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='partner') }}">Log in</a><a class="btn alt" href="{{ url_for('partner.register') }}">Register</a></div>
+  </div>
+  <div class="arch tone-rider">
+    <div class="emblem">{{ i.icon('bike') }}</div>
+    <h3>Rider</h3>
+    <p>Deliver in your own zone, switch on when you are free, and watch your earnings and ratings grow.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='rider') }}">Log in</a><a class="btn alt" href="{{ url_for('rider.register') }}">Register</a></div>
+  </div>
+  <div class="arch tone-admin">
+    <div class="emblem">{{ i.icon('key') }}</div>
+    <h3>Admin</h3>
+    <p>Approve businesses, look after zones and customers, and keep an eye on the health of the platform.</p>
+    <div class="go"><a class="btn" href="{{ url_for('login', role='admin') }}">Log in</a></div>
+  </div>
+</div>
+{% endblock %}

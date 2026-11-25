@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Admins{% endblock %}
+{% block body %}
+{{ m.head('shield', 'Super Admin only', 'Admins and their zones',
+   'Create Super Admins for the whole platform, or Zone Admins who look after one zone.') }}
+
+<div class="split">
+  <div class="card framed">
+    <p class="card-title">{{ i.icon('plus') }}<b>Create an admin</b></p>
+    <form class="stack" method="post" novalidate><input type="hidden" name="form" value="create">
+      <div class="cols"><label>First name *<input name="first_name" maxlength="30" required></label>
+        <label>Middle name<input name="middle_name" maxlength="30"></label>
+        <label>Last name *<input name="last_name" maxlength="30" required></label></div>
+      <div class="cols"><label>Username *<input name="username" maxlength="30" required></label>
+        {{ m.password(label='Password *', autocomplete='new-password') }}
+        <label>Email *<input type="email" name="email" maxlength="100" required placeholder="name@example.com"></label></div>
+      <div class="cols"><label><span>Phone <small>11 digits</small></span><input name="phone" pattern="[0-9]{11}" maxlength="11" inputmode="numeric" placeholder="01xxxxxxxxx"></label>
+        <label>Date of birth<input type="date" name="dob" max="{{ today }}"></label></div>
+      <fieldset><legend>Role *</legend>
+        <div class="pay-opts" style="grid-template-columns:1fr 1fr">
+          <label class="pay-opt"><input type="radio" name="role" value="Super Admin" checked onchange="document.getElementById('zbox').hidden=true">{{ i.icon('key') }}<span class="grow">Super Admin<small class="muted" style="display:block;font-weight:400">Whole platform, no zone</small></span></label>
+          <label class="pay-opt"><input type="radio" name="role" value="Zone Admin" onchange="document.getElementById('zbox').hidden=false">{{ i.icon('map') }}<span class="grow">Zone Admin<small class="muted" style="display:block;font-weight:400">Looks after one zone</small></span></label>
+        </div></fieldset>
+      <div id="zbox" hidden>{{ m.zone_select(zones, label='Zone of this Zone Admin *') }}</div>
+      <div><button type="submit">{{ i.icon('shield') }} Create admin</button></div>
+    </form>
+  </div>
+  <div class="card">
+    <p class="card-title">{{ i.icon('map') }}<b>Assign or move a Zone Admin</b></p>
+    <form class="stack" method="post"><input type="hidden" name="form" value="assign">
+      <label>Zone Admin<select name="admin_id" required><option value="">Choose a Zone Admin</option>
+        {% for a in admins if a.role == 'Zone Admin' %}<option value="{{ a.admin_id }}">{{ a.admin_name }} ({{ a.username }}) · now {{ a.zone_name or 'no zone' }}</option>{% endfor %}</select></label>
+      {{ m.zone_select(zones, label='New zone') }}
+      <div><button type="submit">{{ i.icon('arrow') }} Assign zone</button></div>
+    </form>
+    <p class="muted" style="margin-top:1rem"><small>A Zone Admin can approve, reject and suspend businesses and blacklist customers only in their own zone.</small></p>
+  </div>
+</div>
+
+<h2>Current admins</h2>
+<div class="scroll"><table><tr><th>Name</th><th>Username</th><th>Role</th><th>Zone</th></tr>
+{% for a in admins %}<tr><td><div class="cell-main"><span class="tag {{ 'gold' if a.role == 'Super Admin' else '' }}">{{ i.icon('key' if a.role == 'Super Admin' else 'map') }}</span><b>{{ a.admin_name }}</b></div></td>
+  <td>{{ a.username }}</td><td>{{ a.role }}</td><td>{{ a.zone_name or ('All zones' if a.role == 'Super Admin' else 'No zone yet') }}</td></tr>{% endfor %}</table></div>
+{% endblock %}

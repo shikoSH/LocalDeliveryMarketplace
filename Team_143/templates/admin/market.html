@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Market{% endblock %}
+{% block body %}
+{{ m.head('bag', 'Insights', 'What sells most, and which businesses do customers love or avoid?') }}
+
+<h2>Top selling products</h2>
+{% if products %}
+{% set most = products|map(attribute='units_sold')|max %}
+<div class="scroll"><table><tr><th>#</th><th>Product</th><th>Business</th><th style="width:26%">Units sold</th><th class="n">Revenue</th></tr>
+{% for p in products %}<tr><td>{% if loop.index <= 3 %}<span class="tag gold">{{ loop.index }}</span>{% else %}{{ loop.index }}{% endif %}</td>
+ <td><b>{{ p.product_name }}</b></td><td><span class="cell-main">{{ m.type_icon(p.business_type) }} {{ p.business_name }}</span></td>
+ <td><div class="spread" style="flex-wrap:nowrap;align-items:center;gap:.6rem"><div class="bar-track" style="flex:1"><div class="bar-fill" style="width:{{ (p.units_sold / most * 100)|round }}%"></div></div><b style="min-width:1.5rem;text-align:right">{{ p.units_sold }}</b></div></td>
+ <td class="n">{{ p.total_revenue|money }}</td></tr>{% endfor %}</table></div>
+{% else %}{{ m.empty('bag', 'No sales yet', '') }}{% endif %}
+
+<div class="grid g2" style="margin-top:.6rem">
+ <div class="card" style="border-top:4px solid var(--ok)">
+  <p class="card-title">{{ i.icon('heart') }}<b>Loved by customers</b></p>
+  {% if loved %}{% for b in loved %}<div class="spread" style="padding:.45rem 0;border-bottom:1px dashed var(--line-2);align-items:center"><b>{{ b.business_name }}</b><span>{{ m.stars(b.avg_rating) }} <small class="muted">({{ b.ratings_count }})</small></span></div>{% endfor %}
+  {% else %}<p class="muted">No ratings yet.</p>{% endif %}</div>
+ <div class="card" style="border-top:4px solid var(--err)">
+  <p class="card-title">{{ i.icon('alert') }}<b>Customers avoid</b></p>
+  {% if avoided %}{% for b in avoided %}<div class="spread" style="padding:.45rem 0;border-bottom:1px dashed var(--line-2);align-items:center"><b>{{ b.business_name }}</b><span>{{ m.stars(b.avg_rating) }} <small class="muted">({{ b.ratings_count }})</small></span></div>{% endfor %}
+  {% else %}<p class="muted">No ratings yet.</p>{% endif %}</div>
+</div>
+{% if unrated %}<div class="note info">{{ i.icon('star') }}<span>Not rated yet: {% for b in unrated %}<b>{{ b.business_name }}</b>{{ ', ' if not loop.last }}{% endfor %}.</span></div>{% endif %}
+{% endblock %}

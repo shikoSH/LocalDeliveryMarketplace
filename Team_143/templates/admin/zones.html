@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Zones{% endblock %}
+{% block body %}
+{{ m.head('map', 'Insights', 'Zones and delivery fees', 'The delivery fee is charged once for each business in an order. A change applies to new orders only.') }}
+
+<div class="grid g4">
+{% for z in zones %}
+  <div class="card zone-card" style="margin:0">
+    <div class="spread"><b style="font-family:var(--head);font-size:1.15rem">{{ z.zone_name }}</b><span class="muted">{{ i.icon('pin') }}</span></div>
+    <div class="fee">{{ '%.2f'|format(z.delivery_fee|float) }} <small>EGP delivery</small></div>
+    {% if admin_role == 'Super Admin' %}
+    <form class="row" method="post" style="gap:.4rem;flex-wrap:nowrap"><input type="hidden" name="form" value="fee"><input type="hidden" name="zone_id" value="{{ z.zone_id }}">
+      <input type="number" name="delivery_fee" step="0.01" min="0" required aria-label="New fee for {{ z.zone_name }}" placeholder="New fee" style="flex:1;width:100%;padding:.3rem .55rem">
+      <button class="sm" type="submit">Save</button></form>
+    {% endif %}
+  </div>
+{% endfor %}
+{% if admin_role == 'Super Admin' %}
+  <div class="card framed zone-card" style="margin:0;border-style:dashed">
+    <p class="card-title" style="margin:0">{{ i.icon('plus') }}<b>New zone</b></p>
+    <form class="stack" method="post" style="gap:.5rem"><input type="hidden" name="form" value="create">
+      <input name="zone_name" maxlength="50" required placeholder="Zone name" aria-label="Zone name">
+      <input type="number" name="delivery_fee" step="0.01" min="0" required placeholder="Delivery fee (EGP)" aria-label="Delivery fee in EGP">
+      <button type="submit" class="sm gold">Create zone</button></form>
+  </div>
+{% endif %}
+</div>
+{% if admin_role != 'Super Admin' %}<div class="note info">{{ i.icon('key') }}<span>Only a Super Admin can create zones and change fees.</span></div>{% endif %}
+{% endblock %}

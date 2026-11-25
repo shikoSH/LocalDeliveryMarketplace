@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Cards{% endblock %}
+{% block body %}
+{{ m.head('card', 'Account', 'My cards', 'Only the last 4 digits of a card are ever shown.') }}
+
+<div class="split">
+  <div>
+  {% if rows %}<div class="grid g2">
+  {% for c in rows %}{% set expired = c.expiration_date < c.expiration_date.today() %}
+    <div class="bank-card {{ 'expired' if expired }}">
+      <div class="spread"><span class="chip-ic" aria-hidden="true"></span>{% if expired %}<span class="tag bad">Expired</span>{% endif %}</div>
+      <div class="num" aria-label="Card ending in {{ c.last_four_digits }}">•••• •••• •••• {{ c.last_four_digits }}</div>
+      <div class="low"><span>{{ c.card_holder_name }}</span><span>Exp {{ c.expiration_date.strftime('%m/%y') }}</span></div>
+    </div>
+  {% endfor %}</div>
+  {% else %}{{ m.empty('card', 'No saved card', 'Save a card to pay by card at checkout.') }}{% endif %}
+  </div>
+  <div class="card framed">
+    <p class="card-title">{{ i.icon('plus') }}<b>Save a card</b></p>
+    <form class="stack" method="post" autocomplete="off">
+      <label><span>Card number * <small>16 digits</small></span><input name="card_no" inputmode="numeric" pattern="[0-9]{16}" maxlength="16" required autocomplete="off" placeholder="0000000000000000"></label>
+      <label>Card holder *<input name="holder" maxlength="100" required autocomplete="off"></label>
+      <label>Expires on *<input type="date" name="expiration_date" min="{{ today }}" required></label>
+      <button type="submit">{{ i.icon('card') }} Save card</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

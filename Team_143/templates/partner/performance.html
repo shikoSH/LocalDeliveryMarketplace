@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Performance{% endblock %}
+{% block body %}
+{{ m.head('chart', b.business_name, 'Which products bring my revenue, and what do customers think of me?') }}
+
+<div class="split">
+  <div>
+    <h2 style="margin-top:0">Revenue per product</h2>
+    {{ m.range_form(f, t) }}
+    {% if sales %}
+    {% set top = sales|map(attribute='revenue_per_product')|max %}
+    <div class="stat hero" style="margin-bottom:1rem"><div class="ico">{{ i.icon('coins') }}</div><div><b>{{ total|money }}</b><small>Revenue from {{ f|d }} to {{ t|d }} · {{ sales|sum(attribute='units_sold') }} units</small></div></div>
+    <div class="scroll"><table><tr><th>Product</th><th class="n">Units</th><th style="width:34%">Share of revenue</th><th class="n">Revenue</th></tr>
+    {% for s in sales %}<tr><td><b>{{ s.product_name }}</b>{% if loop.first %} <span class="tag gold">{{ i.icon('trophy') }} Best seller</span>{% endif %}</td><td class="n">{{ s.units_sold }}</td>
+      <td><div class="bar-track"><div class="bar-fill" style="width:{{ (s.revenue_per_product / top * 100)|round }}%"></div></div></td>
+      <td class="n">{{ s.revenue_per_product|money }}</td></tr>{% endfor %}
+    <tr class="total"><td>Total</td><td class="n">{{ sales|sum(attribute='units_sold') }}</td><td></td><td class="n">{{ total|money }}</td></tr></table></div>
+    {% else %}{{ m.empty('chart', 'No sales in this period', 'From ' ~ (f|d) ~ ' to ' ~ (t|d) ~ '. Choose a wider period.') }}{% endif %}
+  </div>
+  <div class="card framed">
+    <p class="card-title">{{ i.icon('star') }}<b>What customers think</b></p>
+    {% if fb.number_of_feedbacks %}
+      <div style="text-align:center;margin:.4rem 0 1rem">
+        <div class="display" style="font-size:3rem;line-height:1">{{ fb.avg_rating|num(1) }}</div>
+        {{ m.stars(fb.avg_rating) }}
+        <p class="muted" style="margin:.2rem 0 0">{{ fb.number_of_feedbacks }} rating{{ 's' if fb.number_of_feedbacks != 1 }}</p>
+      </div>
+      {{ m.dist([('5 stars', fb.five_star), ('4 stars', fb.four_star), ('3 stars', fb.three_star), ('2 stars', fb.two_star), ('1 star', fb.one_star)], fb.number_of_feedbacks) }}
+      {% set low = fb.two_star + fb.one_star %}
+      {% if low %}<div class="note">{{ i.icon('alert') }}<span>{{ low }} low rating{{ 's' if low != 1 }} (1–2 stars) pull your average down.</span></div>{% endif %}
+    {% else %}{{ m.empty('star', 'No ratings yet', 'Customers can rate you after a delivery.') }}{% endif %}
+  </div>
+</div>
+{% endblock %}

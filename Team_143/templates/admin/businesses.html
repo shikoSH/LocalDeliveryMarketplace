@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Businesses{% endblock %}
+{% block body %}
+{{ m.head('store', 'Governance', 'All businesses',
+   'Suspend an Active business with a reason. Only a Super Admin can reinstate a suspended one.') }}
+
+<div class="card" style="padding:.9rem 1.1rem">
+  <div class="spread" style="align-items:center">
+    <div>
+      <p class="muted" style="margin:0 0 .4rem;font-weight:700;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase">Status</p>
+      <div class="chips">
+        <a class="chip {{ 'on' if not status }}" href="{{ url_for('admin.businesses', type=btype) }}">All</a>
+        {% for s, ic in [('Pending','clock'),('Active','check'),('Suspended','ban'),('Rejected','x')] %}
+        <a class="chip {{ 'on' if status == s }}" href="{{ url_for('admin.businesses', status=s, type=btype) }}">{{ i.icon(ic) }} {{ s }}</a>{% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="muted" style="margin:0 0 .4rem;font-weight:700;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase">Type</p>
+      <div class="chips">
+        <a class="chip {{ 'on' if not btype }}" href="{{ url_for('admin.businesses', status=status) }}">All</a>
+        <a class="chip {{ 'on' if btype == 'Restaurant' }}" href="{{ url_for('admin.businesses', status=status, type='Restaurant') }}">{{ i.icon('utensils') }} Restaurants</a>
+        <a class="chip {{ 'on' if btype == 'Pharmacy' }}" href="{{ url_for('admin.businesses', status=status, type='Pharmacy') }}">{{ i.icon('pill') }} Pharmacies</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if rows %}
+<p class="muted">{{ rows|length }} business{{ 'es' if rows|length != 1 }}{{ (' · ' ~ status) if status }}{{ (' · ' ~ btype) if btype }}</p>
+<div class="scroll"><table>
+  <tr><th>Business</th><th>Zone</th><th>Partner</th><th>Hours</th><th>Status</th><th style="min-width:300px">Action</th></tr>
+  {% for r in rows %}<tr>
+    <td><div class="cell-main"><span class="tag gold" title="{{ r.business_type }}">{{ m.type_icon(r.business_type) }}</span><span><b>{{ r.business_name }}</b><small class="muted">{{ r.business_type }}</small></span></div></td>
+    <td>{{ r.zone_name }}</td><td>{{ r.partner_name }}</td>
+    <td style="white-space:nowrap">{% if r.opening_hour == r.closing_hour %}Open 24 hours{% else %}{{ r.opening_hour|hm }}–{{ r.closing_hour|hm }}{% endif %}</td>
+    <td>{{ m.tag(r.status) }}{% if r.suspension_reason %}<small class="muted" style="display:block;margin-top:.2rem">{{ r.suspension_reason }}</small>{% endif %}</td>
+    <td>
+      {% if r.status == 'Active' and r.manageable %}
+      <form method="post" class="row" style="gap:.4rem;flex-wrap:nowrap">
+        <input type="hidden" name="business_id" value="{{ r.business_id }}"><input type="hidden" name="business_name" value="{{ r.business_name }}">
+        <input name="reason" placeholder="Reason for suspending" maxlength="255" required aria-label="Suspension reason for {{ r.business_name }}" style="flex:1;padding:.3rem .55rem">
+        <button name="action" value="suspend" class="sm danger"
+          onclick='return confirm({{ ("Suspend " ~ r.business_name ~ "? All its products are turned off, and orders not yet picked up are cancelled and refunded.")|tojson }})'>{{ i.icon('ban') }} Suspend</button>
+      </form>
+      {% elif r.status == 'Suspended' and admin_role == 'Super Admin' %}
+      <form method="post" class="inline"><input type="hidden" name="business_id" value="{{ r.business_id }}"><input type="hidden" name="business_name" value="{{ r.business_name }}">
+        <button name="action" value="reinstate" class="sm ok" onclick='return confirm({{ ("Reinstate " ~ r.business_name ~ "? It becomes Active again. Its owner must turn products back on.")|tojson }})'>{{ i.icon('refresh') }} Reinstate</button></form>
+      {% elif r.status == 'Suspended' %}<small class="muted">Only a Super Admin can reinstate</small>
+      {% elif r.status == 'Active' %}<small class="muted">Outside your zone</small>
+      {% elif r.status == 'Pending' %}<a class="btn sm alt" href="{{ url_for('admin.pending') }}">Go to approvals</a>
+      {% else %}<span class="muted">—</span>{% endif %}
+    </td>
+  </tr>{% endfor %}
+</table></div>
+{% else %}{{ m.empty('search', 'No business matches this filter', 'Choose another status or type.') }}{% endif %}
+{% endblock %}

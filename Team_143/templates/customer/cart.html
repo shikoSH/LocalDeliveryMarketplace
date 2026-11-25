@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Cart{% endblock %}
+{% block body %}
+{% set lead %}{% if p.active_address %}Delivering to <b>{{ p.active_address }}</b> in {{ p.active_zone }}. {% endif %}A cart belongs to your active address.{% endset %}
+{{ m.head('cart', 'My cart', 'Your basket', lead) }}
+{% if cid is none %}
+<div class="card framed" style="text-align:center;padding:2rem">
+  {{ i.icon('cart') }}
+  <h2 class="plain" style="justify-content:center;margin:.4rem 0">You have no active cart{% if p.active_address %} for {{ p.active_address }}{% endif %}</h2>
+  <p class="muted">Create one now, or just add a product from a business page and it opens by itself.</p>
+  <form method="post" class="btn-row" style="justify-content:center"><input type="hidden" name="form" value="create">
+    <button type="submit">{{ i.icon('plus') }} Create a cart for my active address</button>
+    <a class="btn alt" href="{{ url_for('customer.browse') }}">Browse businesses</a></form>
+</div>
+{% elif not items %}
+{{ m.empty('cart', 'Your cart is empty', '<a href="' ~ url_for('customer.browse') ~ '">Find something to order</a>.') }}
+{% else %}
+<div class="split">
+  <div>
+  {% for bid, lines in items|groupby('business_id') %}
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="order-head" style="padding:.8rem 1.1rem"><span class="cell-main">{{ i.icon('store') }}<b>{{ lines[0].business_name }}</b></span>
+        <small class="muted">{{ lines|length }} product{{ 's' if lines|length != 1 }}</small></div>
+      {% for it in lines %}
+      <div class="part" style="display:grid;grid-template-columns:auto 1fr auto auto;gap:1rem;align-items:center">
+        <span class="tag" style="font-size:.95rem">{{ it.quantity }}×</span>
+        <div><b>{{ it.product_name }}</b>{% if not it.is_available %} <span class="tag Cancelled">No longer available</span>{% endif %}
+          <small class="muted" style="display:block">{{ it.unit_price|money }} each{% if it.notes %} · “{{ it.notes }}”{% endif %}</small></div>
+        <b class="price" style="font-size:1.05rem">{{ it.line_total|money }}</b>
+        <form method="post" class="inline"><input type="hidden" name="form" value="remove"><input type="hidden" name="product_id" value="{{ it.product_id }}">
+          <button class="sm alt danger" type="submit" aria-label="Remove {{ it.product_name }}">{{ i.icon('trash') }}</button></form>
+      </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+  </div>
+  <div class="receipt sticky">
+    <p class="card-title">{{ i.icon('receipt') }}<b>Summary</b></p>
+    <table class="sum">
+      <tr><td>Products</td><td class="n">{{ total|money }}</td></tr>
+      <tr class="sub"><td colspan="2">Delivery fees, vouchers and payment are chosen at checkout.</td></tr>
+      <tr class="total"><td>Products total</td><td class="n">{{ total|money }}</td></tr>
+    </table>
+    <div class="stack-sm" style="margin-top:1rem">
+      <a class="btn block lg" href="{{ url_for('customer.checkout') }}">Go to checkout {{ i.icon('arrow') }}</a>
+      <a class="btn alt block" href="{{ url_for('customer.browse') }}">Add more</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

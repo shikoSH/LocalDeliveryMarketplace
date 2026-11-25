@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Log in as {{ target }}{% endblock %}
+{% block body %}
+{% set info = {
+  'customer': ('heart', 'Welcome back', 'Your favourite koshary is a few clicks away.', ['Order from businesses in your zone', 'Track every part of your order', 'Use your wallet, card or cash']),
+  'partner':  ('store', 'Your shop, online', 'Keep your menu fresh and your customers happy.', ['See your business status at a glance', 'Add products and set offers', 'Know which products bring revenue']),
+  'rider':    ('bike', 'Ready to ride?', 'Your next delivery is waiting in your zone.', ['Switch your availability on or off', 'Pick up and deliver step by step', 'Follow your earnings and ratings']),
+  'admin':    ('key', 'Platform control', 'Keep the marketplace fair, safe and healthy.', ['Approve and suspend businesses', 'Manage zones, admins and vouchers', 'Watch today\'s platform health']),
+} %}
+{% set ic, heading, sub, points = info[target] %}
+<div class="auth tone-{{ target }}">
+  <div class="auth-side">
+    <div>
+      <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="">
+      <h2>{{ heading }}</h2>
+      <p>{{ sub }}</p>
+    </div>
+    <ul>{% for p in points %}<li>{{ i.icon('check') }}<span>{{ p }}</span></li>{% endfor %}</ul>
+  </div>
+  <div class="auth-main">
+    <p class="eyebrow" style="margin:0;font-size:.8rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink)">{{ target|capitalize }} account</p>
+    <h1>Log in</h1>
+    <form class="stack" method="post" novalidate>
+      <label>Username<input name="username" maxlength="30" required autofocus autocomplete="username" value="{{ request.form.username }}"></label>
+      {{ m.password() }}
+      <button type="submit" class="lg" style="background:var(--tone);border-color:var(--tone);color:#fff">{{ i.icon(ic) }} Log in</button>
+    </form>
+    {% if target != 'admin' %}<p class="muted" style="margin-top:1.2rem">New here? <a href="{{ url_for(target ~ '.register') }}">Create a {{ target }} account</a>.</p>{% endif %}
+    <p class="muted"><a href="{{ url_for('index') }}">Choose another account type</a></p>
+  </div>
+</div>
+{% endblock %}

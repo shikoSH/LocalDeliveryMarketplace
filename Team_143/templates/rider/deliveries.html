@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}My deliveries{% endblock %}
+{% block body %}
+{{ m.head('flag', 'Rider', 'What do I do next?', 'Each delivery shows where it is in its journey. Do the highlighted step, then mark it here.') }}
+{% if rows %}<div class="grid g2">
+{% for d in rows %}{% set picked = d.status == 'Picked Up' %}
+<div class="card framed" style="margin:0">
+  <div class="spread"><span class="muted">Order #{{ d.order_id }} · assigned {{ d.assigned_at|dt }}</span>{{ m.tag(d.status) }}</div>
+  {{ m.stepper(d.status) }}
+  <div class="route">
+    <div class="dot {{ 'here' if not picked }}">{{ i.icon('store') }}</div>
+    <div class="stop"><small>Pick up from</small><b>{{ d.business_name }}</b></div>
+    <div class="line"></div><div></div>
+    <div class="dot {{ 'here' if picked }}">{{ i.icon('pin') }}</div>
+    <div class="stop"><small>Deliver to</small><b>{{ d.customer_name }}</b><br><span class="muted">{{ d.address_description }} · {{ d.zone_name }}</span></div>
+  </div>
+  <form method="post" class="next-step"><input type="hidden" name="delivery_id" value="{{ d.delivery_id }}">
+    {% if not picked %}<p><b>Next:</b> collect the order from {{ d.business_name }}.</p>
+      <button name="action" value="pickup" type="submit">{{ i.icon('bag') }} Mark as picked up</button>
+    {% else %}<p><b>Next:</b> hand the order to {{ d.customer_name }}.</p>
+      <button name="action" value="deliver" type="submit" class="ok">{{ i.icon('check') }} Mark as delivered</button>{% endif %}
+  </form>
+</div>{% endfor %}</div>
+{% else %}{{ m.empty('flag', 'No active delivery', 'Make sure you are <a href="' ~ url_for('rider.home') ~ '">available</a> to receive new ones.') }}{% endif %}
+{% endblock %}

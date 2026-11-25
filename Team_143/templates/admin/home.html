@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Admin dashboard{% endblock %}
+{% block body %}
+{{ m.head('gauge', profile.role ~ (' · ' ~ profile.zone_name if profile.zone_name else ''), 'Welcome back, ' ~ profile.admin_name,
+   'Is the platform healthy today, and is anything wrong? Problems that need you come first.') }}
+
+{% if mismatches %}
+<div class="banner" role="alert">
+  <div class="spread">
+    <div style="display:flex;gap:.7rem;align-items:flex-start">{{ i.icon('alert') }}
+      <div><b class="big">{{ mismatches|length }} order{{ 's' if mismatches|length != 1 }} with totals that do not match</b>
+      <p style="margin:.2rem 0 0">The order total, the sum of its parts or its payment disagree. Check these orders before anything else.</p></div></div>
+  </div>
+  <div class="scroll" style="margin-top:.9rem"><table>
+    <tr><th>Order</th><th class="n">Expected (parts − discount)</th><th class="n">Order total</th><th class="n">Payment</th><th class="n">Difference</th></tr>
+    {% for r in mismatches %}<tr><td><b>#{{ r.order_id }}</b></td><td class="n">{{ r.expected_total|money }}</td><td class="n">{{ r.order_total|money }}</td>
+      <td class="n">{{ r.payment_amount|money if r.payment_amount is not none else 'No payment' }}</td>
+      <td class="n"><b>{{ ((r.payment_amount or 0) - r.order_total)|money if r.payment_amount is not none else '—' }}</b></td></tr>{% endfor %}
+  </table></div>
+</div>
+{% else %}
+<div class="banner good">{{ i.icon('check') }} <span><b>All order totals match</b> their parts and their payments.</span></div>
+{% endif %}
+
+<div class="grid g3">
+  <div class="stat hero"><div class="ico">{{ i.icon('receipt') }}</div><div><b>{{ health.orders_today }}</b><small>Orders placed today</small></div></div>
+  <div class="stat {{ 'alert' if health.available_riders == 0 else 'good' }}"><div class="ico">{{ i.icon('bike') }}</div><div><b>{{ health.available_riders }}</b><small>Riders available right now</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('store') }}</div><div><b>{{ health.active_businesses }}</b><small>Active businesses</small></div></div>
+  <div class="stat"><div class="ico">{{ i.icon('clock') }}</div><div><b>{{ health.avg_delivery_time_today|num(1) }}{% if health.avg_delivery_time_today is not none %} <small style="display:inline">min</small>{% endif %}</b><small>Average delivery time today</small></div></div>
+  <div class="stat {{ 'alert' if health.low_ratings_today else '' }}"><div class="ico">{{ i.icon('star') }}</div><div><b>{{ health.low_ratings_today }}</b><small>Low ratings (1–2 stars) today</small></div></div>
+  <div class="stat {{ 'warnish' if pending else '' }}"><div class="ico">{{ i.icon('inbox') }}</div><div><b>{{ pending }}</b><small>Businesses awaiting approval</small>
+    {% if pending %}<a href="{{ url_for('admin.pending') }}">Review now →</a>{% endif %}</div></div>
+</div>
+{% if health.available_riders == 0 %}<div class="note bad">{{ i.icon('alert') }}<span>No rider is available. New orders will fail until a rider switches to available.</span></div>{% endif %}
+
+<h2>Look deeper</h2>
+<div class="grid g4">
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('admin.compare') }}"><p class="card-title">{{ i.icon('scale') }}<b>Compare zones</b></p><small class="muted">Which zone is strongest, and which needs help?</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('admin.revenue') }}"><p class="card-title">{{ i.icon('coins') }}<b>Daily revenue</b></p><small class="muted">Where did the money of a day come from?</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('admin.riders') }}"><p class="card-title">{{ i.icon('bike') }}<b>Riders</b></p><small class="muted">Who is best, and who is falling behind?</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('admin.market') }}"><p class="card-title">{{ i.icon('bag') }}<b>Market</b></p><small class="muted">What sells, and what do customers love?</small></a>
+</div>
+{% endblock %}

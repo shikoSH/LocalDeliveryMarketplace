@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}{{ d.business_name }}{% endblock %}
+{% block body %}
+<section class="shop-hero">
+  <div class="spread">
+    <div>
+      <p style="margin:0"><a href="{{ url_for('customer.browse') }}" style="color:var(--gold);font-weight:700;text-decoration:none">← Back to browse</a></p>
+      <h1>{{ d.business_name }}</h1>
+      <p>{{ d.description or '' }}</p>
+    </div>
+    <form method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Business"><input type="hidden" name="item_id" value="{{ d.business_id }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button class="alt" type="submit" aria-pressed="{{ 'true' if fav_business else 'false' }}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="{{ 'currentColor' if fav_business else 'none' }}" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 8 2.8C20 15.4 12 20 12 20z"/></svg>
+        {{ 'In your favorites' if fav_business else 'Add to favorites' }}</button></form>
+  </div>
+  <div class="facts">
+    <span class="tag {{ 'open' if d.is_open_now else 'closed' }}" style="font-size:.85rem">{{ 'Open now' if d.is_open_now else 'Closed now' }}</span>
+    <span>{{ i.icon('clock') }} {% if d.opening_hour == d.closing_hour %}Open 24 hours{% else %}{{ d.opening_hour|hm }}–{{ d.closing_hour|hm }}{% endif %}</span>
+    <span>{{ i.icon('bike') }} About {{ d.expected_delivery_time }} min</span>
+    <span>{{ i.icon('map') }} {{ d.zone_name }}</span>
+    <span>{{ m.stars(rating.avg_rating if rating else None) }} <small style="opacity:.8">({{ rating.ratings_count if rating else 0 }} rating{{ 's' if (rating.ratings_count if rating else 0) != 1 }})</small></span>
+    {% if d.link_website %}<span>{{ i.icon('globe') }} {{ d.link_website }}</span>{% endif %}
+  </div>
+</section>
+
+{% if not can_order %}<div class="note">{{ i.icon('pin') }}<span>This business delivers in {{ d.zone_name }}, but your active address is in {{ p.active_zone or 'no zone yet' }}. <a href="{{ url_for('customer.addresses') }}">Change your active address</a> to order here.</span></div>{% endif %}
+{% if not d.is_open_now %}<div class="note">{{ i.icon('clock') }}<span>This business is closed now. You can add products, but checkout only works while it is open.</span></div>{% endif %}
+
+{% if products %}
+{% for cat, items in products|groupby('category') %}
+<h2>{{ cat }}</h2>
+<div class="grid g2">{% for pr in items %}
+<div class="card menu-item" style="margin:0">
+  <div class="spread" style="flex-wrap:nowrap">
+    <div><h3 style="margin:0">{{ pr.product_name }}</h3>{% if pr.description %}<small class="muted">{{ pr.description }}</small>{% endif %}</div>
+    <div style="display:flex;gap:.4rem;align-items:flex-start">
+      <div class="price" style="text-align:right">{% if pr.discount_amount > 0 %}<s>{{ pr.price|money }}</s><br>{% endif %}{{ pr.final_price|money }}</div>
+      <form method="post" action="{{ url_for('customer.favorite') }}"><input type="hidden" name="item_type" value="Product"><input type="hidden" name="item_id" value="{{ pr.product_id }}"><input type="hidden" name="next" value="{{ request.path }}">
+        {% set fav = pr.product_id in fav_products %}
+        <button class="fav-btn {{ 'on' if fav }}" type="submit" aria-label="{{ 'Remove ' ~ pr.product_name ~ ' from favorites' if fav else 'Add ' ~ pr.product_name ~ ' to favorites' }}" title="{{ 'Remove from favorites' if fav else 'Add to favorites' }}">{{ i.icon('heart') }}</button></form>
+    </div>
+  </div>
+  {% if pr.discount_amount > 0 %}<div><span class="tag gold">{{ i.icon('percent') }} Offer · save {{ pr.discount_amount|money }}</span></div>{% endif %}
+  <form class="row" method="post" action="{{ url_for('customer.cart_add') }}" style="gap:.5rem;margin-top:.2rem"><input type="hidden" name="product_id" value="{{ pr.product_id }}"><input type="hidden" name="next" value="{{ request.path }}">
+    <label>Qty<input class="qty" type="number" name="quantity" min="1" max="10" value="1" required></label>
+    <label class="grow" style="min-width:140px">Note<input name="notes" maxlength="255" placeholder="Optional, e.g. extra sauce"></label>
+    <button type="submit" {{ 'disabled' if not can_order }}>{{ i.icon('cart') }} Add</button></form>
+</div>{% endfor %}</div>
+{% endfor %}
+{% else %}<div style="margin-top:1.4rem">{{ m.empty('box', 'No product is available right now', 'Come back later, or try another business.') }}</div>{% endif %}
+{% endblock %}

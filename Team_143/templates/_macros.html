@@ -1,0 +1,66 @@
+{% import '_icons.html' as i %}
+{% macro tag(s) %}<span class="tag {{ s }}">{{ s }}</span>{% endmacro %}
+
+{% macro head(icon, eyebrow, title, lead=None) %}
+<div class="page-head">
+  <div class="seal">{{ i.icon(icon) }}</div>
+  <div>
+    <p class="eyebrow">{{ eyebrow }}</p>
+    <h1>{{ title }}</h1>
+    {% if lead %}<p class="lead">{{ lead }}</p>{% endif %}
+  </div>
+  {% if caller %}<div class="actions">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro empty(icon, title, text='') %}
+<div class="empty">{{ i.icon(icon) }}<b>{{ title }}</b>{{ text|safe }}</div>
+{% endmacro %}
+
+{% macro zone_select(zones, name='zone_id', selected=None, label='Zone') %}
+<label>{{ label }}
+  <select name="{{ name }}" required>
+    <option value="">Choose a zone</option>
+    {% for z in zones %}<option value="{{ z.zone_id }}" {{ 'selected' if selected == z.zone_id }}>{{ z.zone_name }} (delivery {{ z.delivery_fee|money }})</option>{% endfor %}
+  </select>
+</label>
+{% endmacro %}
+
+{% macro range_form(f, t, action='') %}
+<form class="row card" method="get" action="{{ action }}" style="padding:.9rem 1.1rem">
+  <label>From<input type="date" name="from" value="{{ f|iso }}" required></label>
+  <label>To<input type="date" name="to" value="{{ t|iso }}" required></label>
+  <button type="submit">{{ i.icon('calendar') }} Show period</button>
+</form>
+{% endmacro %}
+
+{% macro stepper(status) %}
+{% set order = ['Placed','Assigned','Picked Up','Delivered'] %}
+{% if status == 'Cancelled' %}<p><span class="tag Cancelled">{{ i.icon('x') }} Cancelled</span></p>
+{% else %}
+<ol class="steps" aria-label="Progress: {{ status }}">
+  {% for s in order %}<li class="{{ 'done' if order.index(s) < order.index(status) or (s == status and s == 'Delivered') else '' }} {{ 'now' if s == status and s != 'Delivered' else '' }}">{{ s }}</li>{% endfor %}
+</ol>
+{% endif %}
+{% endmacro %}
+
+{% macro stars(v) -%}
+{% if v is none %}<span class="muted">No ratings yet</span>
+{%- else %}{% set n = (v|float)|round|int %}<span class="stars" aria-label="{{ '%.1f'|format(v|float) }} out of 5"><span aria-hidden="true">{{ '★' * n }}<span class="off">{{ '★' * (5 - n) }}</span></span></span> <b>{{ '%.1f'|format(v|float) }}</b>{% endif %}
+{%- endmacro %}
+
+{% macro password(name='password', label='Password', autocomplete='current-password', req=True) %}
+<label>{{ label }}
+  <span class="pw"><input type="password" name="{{ name }}" maxlength="30" {{ 'required' if req }} autocomplete="{{ autocomplete }}">
+  <button type="button" aria-label="Show password" onclick="var f=this.previousElementSibling;var s=f.type==='password';f.type=s?'text':'password';this.setAttribute('aria-label',s?'Hide password':'Show password')">{{ i.icon('eye') }}</button></span>
+</label>
+{% endmacro %}
+
+{% macro type_icon(t) %}{{ i.icon('pill' if t == 'Pharmacy' else 'utensils') }}{% endmacro %}
+
+{% macro dist(rows, total) %}
+{% for label, n in rows %}
+<div class="dist"><span>{{ label }}</span>
+  <div class="bar-track"><div class="bar-fill gold" style="width:{{ ((n / total * 100) if total else 0)|round }}%"></div></div><span class="n">{{ n }}</span></div>
+{% endfor %}
+{% endmacro %}

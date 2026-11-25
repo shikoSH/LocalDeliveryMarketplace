@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}My business{% endblock %}
+{% block body %}
+{{ m.head('store', 'Partner', 'My business', 'Where your business stands, and the details customers see.') }}
+
+{% if b %}
+<div class="card framed">
+  <div class="storefront">
+    <div class="sign">{{ m.type_icon(b.business_type) }}</div>
+    <div><h2 class="plain" style="margin:0;font-size:1.5rem">{{ b.business_name }}</h2>
+      <span class="muted">{{ b.description or 'No description' }}</span></div>
+    {{ m.tag(b.status) }}
+  </div>
+  {% if b.status == 'Suspended' %}<div class="note bad">{{ i.icon('ban') }}<span><b>Suspended.</b> Reason: {{ b.suspension_reason }}</span></div>{% endif %}
+  <div class="grid g4" style="margin-top:1rem">
+    <div><small class="muted">{{ i.icon('utensils' if b.business_type == 'Restaurant' else 'pill') }} Type</small><br><b>{{ b.business_type }}</b>{% if b.cuisine_type %}<br><small>{{ b.cuisine_type }} · {{ b.food_category }}</small>{% elif b.pharmacy_type %}<br><small>{{ b.pharmacy_type }}</small>{% endif %}</div>
+    <div><small class="muted">{{ i.icon('map') }} Zone</small><br><b>{{ b.zone_name }}</b><br><small>{{ b.expected_delivery_time }} min expected delivery</small></div>
+    <div><small class="muted">{{ i.icon('clock') }} Hours</small><br><b>{% if b.opening_hour == b.closing_hour %}Open 24 hours{% else %}{{ b.opening_hour|hm }} – {{ b.closing_hour|hm }}{% endif %}</b></div>
+    <div><small class="muted">{{ i.icon('globe') }} Website</small><br><b>{{ b.link_website or '—' }}</b></div>
+  </div>
+  <p style="margin-top:1rem"><small class="muted">{{ i.icon('phone') }} Phones</small><br>{% for p in phones %}<span class="tag gold" style="font-size:.88rem">{{ p.phone }}</span> {% else %}<span class="muted">None yet</span>{% endfor %}</p>
+</div>
+{% endif %}
+
+{% if b and b.status != 'Rejected' %}
+<div class="card">
+  <p class="card-title">{{ i.icon('edit') }}<b>Update hours, website or add a phone</b></p>
+  <form class="stack" method="post" novalidate><input type="hidden" name="form" value="update">
+    <div class="cols">
+      <label>Opening hour<input type="time" name="opening_hour" value="{{ b.opening_hour|isotime }}"></label>
+      <label>Closing hour<input type="time" name="closing_hour" value="{{ b.closing_hour|isotime }}"></label>
+      <label>Website<input name="link_website" maxlength="255" value="{{ b.link_website or '' }}" placeholder="www.example.com"></label>
+      <label><span>Add a phone number <small>11 digits</small></span><input name="phone" pattern="[0-9]{11}" maxlength="11" inputmode="numeric" placeholder="02xxxxxxxxx"></label>
+    </div>
+    <p class="muted" style="margin:0"><small>Same opening and closing time means open 24 hours. Leave a field as it is to keep it.</small></p>
+    <div><button type="submit">{{ i.icon('check') }} Save changes</button></div>
+  </form>
+</div>
+{% else %}
+<div class="card framed">
+  <p class="card-title">{{ i.icon('plus') }}<b>{{ 'Register your business again' if b else 'Register your business' }}</b></p>
+  {% if b %}<div class="note">{{ i.icon('refresh') }}<span>The admin rejected your business. Fix the details below and send it again. Your old phone numbers are replaced by the one you enter.</span></div>{% endif %}
+  <form class="stack" method="post" novalidate><input type="hidden" name="form" value="register">
+    <div class="cols">
+      <label>Business name *<input name="name" maxlength="100" required value="{{ b.business_name if b else '' }}"></label>
+      <label>Type *<select name="business_type" required onchange="document.getElementById('rest').hidden=this.value!=='Restaurant';document.getElementById('pharm').hidden=this.value!=='Pharmacy'">
+        <option value="">Choose a type</option><option>Restaurant</option><option>Pharmacy</option></select></label>
+      {{ m.zone_select(zones, selected=b.zone_id if b else None, label='Zone *') }}
+    </div>
+    <label>Description<input name="description" maxlength="255" value="{{ b.description or '' if b else '' }}" placeholder="What makes your place special?"></label>
+    <div class="cols" id="rest" hidden>
+      <label>Cuisine type *<input name="cuisine_type" maxlength="50" placeholder="Egyptian"></label>
+      <label>Food category *<input name="food_category" maxlength="50" placeholder="Fast Food"></label>
+    </div>
+    <div class="cols" id="pharm" hidden><label>Pharmacy type *<input name="pharmacy_type" maxlength="50" placeholder="Retail"></label></div>
+    <div class="cols">
+      <label>Opening hour *<input type="time" name="opening_hour" required></label>
+      <label>Closing hour *<input type="time" name="closing_hour" required></label>
+      <label>Expected delivery (minutes) *<input type="number" name="expected_delivery_time" min="1" required placeholder="30"></label>
+    </div>
+    <div class="cols">
+      <label><span>Phone <small>11 digits</small></span><input name="phone" pattern="[0-9]{11}" maxlength="11" inputmode="numeric" placeholder="02xxxxxxxxx"></label>
+      <label>Website<input name="link_website" maxlength="255" placeholder="www.example.com"></label>
+    </div>
+    <div><button type="submit" class="lg">{{ i.icon('arrow') }} Send for approval</button></div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+{% import '_icons.html' as i %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Home{% endblock %} · Talabat Sanaa El-Awady</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+{% set ep = request.endpoint or '' %}
+{% macro nav(endpoint, label, ic, active=None) -%}
+  {% set on = (ep in active) if active else (ep == endpoint) %}
+  <a href="{{ url_for(endpoint) }}" class="{{ 'on' if on }}" {{ 'aria-current="page"'|safe if on }}>{{ i.icon(ic) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+<body class="r-{{ role or 'guest' }} {{ 'has-side' if role }}">
+<a class="skip" href="#main">Skip to content</a>
+{% if role %}
+<aside class="side" aria-label="Main menu">
+  <a class="brand" href="{{ url_for(role ~ '.home') }}">
+    <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="" width="46" height="46">
+    <span class="brand-text"><small>Talabat</small><b>Sanaa El-Awady</b></span>
+  </a>
+  <div class="side-role">{{ i.icon({'admin':'key','partner':'store','rider':'bike','customer':'heart'}[role]) }}
+    {% if role == 'admin' %}{{ admin_role }}{% else %}{{ role|capitalize }}{% endif %}</div>
+  <nav class="side-nav">
+  {% if role == 'admin' %}
+    <p class="side-group">Today</p>
+    {{ nav('admin.home', 'Dashboard', 'gauge') }}
+    <p class="side-group">Governance</p>
+    {{ nav('admin.pending', 'Approvals', 'inbox') }}
+    {{ nav('admin.businesses', 'Businesses', 'store') }}
+    {% if admin_role == 'Super Admin' %}{{ nav('admin.admins', 'Admins', 'shield') }}{% endif %}
+    {{ nav('admin.vouchers', 'Vouchers', 'ticket') }}
+    {{ nav('admin.blacklist', 'Blacklist', 'ban') }}
+    <p class="side-group">Insights</p>
+    {{ nav('admin.zones_page', 'Zones', 'map') }}
+    {{ nav('admin.compare', 'Compare zones', 'scale') }}
+    {{ nav('admin.revenue', 'Daily revenue', 'coins') }}
+    {{ nav('admin.riders', 'Riders', 'bike') }}
+    {{ nav('admin.market', 'Market', 'bag') }}
+  {% elif role == 'partner' %}
+    {{ nav('partner.home', 'Home', 'home') }}
+    {{ nav('partner.business', 'My business', 'store') }}
+    {{ nav('partner.products', 'Products', 'box') }}
+    {{ nav('partner.performance', 'Performance', 'chart') }}
+  {% elif role == 'rider' %}
+    {{ nav('rider.home', 'Home', 'home') }}
+    {{ nav('rider.deliveries', 'My deliveries', 'flag') }}
+    {{ nav('rider.performance', 'Performance', 'chart') }}
+  {% elif role == 'customer' %}
+    {{ nav('customer.home', 'Home', 'home') }}
+    {{ nav('customer.browse', 'Browse', 'search', ('customer.browse', 'customer.business')) }}
+    {{ nav('customer.cart', 'Cart', 'cart', ('customer.cart', 'customer.checkout')) }}
+    {{ nav('customer.orders', 'My orders', 'receipt') }}
+    {{ nav('customer.favorites', 'Favorites', 'heart') }}
+    <p class="side-group">Account</p>
+    {{ nav('customer.addresses', 'Addresses', 'pin') }}
+    {{ nav('customer.cards', 'Cards', 'card') }}
+  {% endif %}
+  </nav>
+  <div class="side-foot">
+    <span class="who">{{ i.icon('user') }}<span>{{ user_name }}</span></span>
+    <a class="logout" href="{{ url_for('logout') }}">{{ i.icon('logout') }}<span>Log out</span></a>
+  </div>
+</aside>
+{% else %}
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="" width="42" height="42">
+      <span class="brand-text"><small>Talabat</small><b>Sanaa El-Awady</b></span>
+    </a>
+    <nav class="top-links" aria-label="Log in">
+      <a href="{{ url_for('login', role='customer') }}">Customers</a>
+      <a href="{{ url_for('login', role='partner') }}">Partners</a>
+      <a href="{{ url_for('login', role='rider') }}">Riders</a>
+      <a href="{{ url_for('login', role='admin') }}">Admins</a>
+    </nav>
+  </div>
+</header>
+{% endif %}
+<div class="band" aria-hidden="true"></div>
+<main id="main">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}<div class="flashes">
+    {% for cat, m in msgs %}<div class="flash {{ cat }}" role="{{ 'alert' if cat == 'err' else 'status' }}">{{ i.icon({'ok':'check','err':'alert','warn':'alert'}.get(cat, 'alert')) }}<span>{{ m }}</span></div>{% endfor %}
+    </div>{% endif %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</main>
+<footer class="foot">
+  <div class="band thin" aria-hidden="true"></div>
+  <p><b>Talabat Sanaa El-Awady</b> · Home-made taste, delivered from the businesses of your neighbourhood · Team 143</p>
+</footer>
+</body>
+</html>

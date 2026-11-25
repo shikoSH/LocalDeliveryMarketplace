@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Blacklist{% endblock %}
+{% block body %}
+{{ m.head('ban', 'Governance', 'Blacklist', 'Stop a customer who abuses the platform. Only the admin who set a blacklist can lift it.') }}
+
+<div class="card framed">
+  <p class="card-title">{{ i.icon('ban') }}<b>Blacklist a customer</b></p>
+  <form class="row" method="post" id="bl"><input type="hidden" name="action" value="add"><input type="hidden" name="customer_name" id="cname">
+    <label>Customer *<select name="customer_id" id="cust" required><option value="">Choose a customer</option>
+      {% for c in customers %}<option value="{{ c.customer_id }}">{{ c.customer_name }} ({{ c.username }}){% if c.active_zone %} · {{ c.active_zone }}{% endif %}</option>{% endfor %}</select></label>
+    <label class="grow">Reason *<input name="reason" maxlength="255" required placeholder="What happened?"></label>
+    <button class="danger" type="submit">{{ i.icon('ban') }} Blacklist</button>
+  </form>
+  <div class="note bad">{{ i.icon('alert') }}<span>Blacklisting stops the customer from logging in and ordering. Their orders not yet picked up are cancelled and refunded, and their unused vouchers are removed. This cannot be undone by lifting the blacklist.</span></div>
+</div>
+<script>
+document.getElementById('bl').addEventListener('submit', function(e){
+  var s=document.getElementById('cust'); var n=s.options[s.selectedIndex].text.split(' (')[0];
+  document.getElementById('cname').value=n;
+  if(!confirm('Blacklist '+n+'? They will not be able to log in or order. Their orders not yet picked up will be cancelled and refunded, and their unused vouchers removed.')) e.preventDefault();
+});
+</script>
+
+<h2>Blacklisted customers <span class="tag bad">{{ banned|length }}</span></h2>
+{% if banned %}<div class="scroll"><table><tr><th>Customer</th><th>Reason</th><th>Blacklisted by</th><th></th></tr>
+{% for b in banned %}<tr><td><div class="cell-main"><span class="tag bad">{{ i.icon('ban') }}</span><b>{{ b.customer_name }}</b></div></td><td>{{ b.reason }}</td><td>{{ b.blacklisted_by }}{% if b.mine %} <span class="tag gold">You</span>{% endif %}</td>
+ <td>{% if b.mine %}<form method="post" class="inline"><input type="hidden" name="customer_id" value="{{ b.customer_id }}"><input type="hidden" name="customer_name" value="{{ b.customer_name }}">
+   <button name="action" value="lift" class="sm ok" onclick='return confirm({{ ("Lift the blacklist on " ~ b.customer_name ~ "? They can log in and order again. Refunded orders stay cancelled.")|tojson }})'>{{ i.icon('refresh') }} Lift blacklist</button></form>
+   {% else %}<small class="muted">Only {{ b.blacklisted_by }} can lift it</small>{% endif %}</td></tr>{% endfor %}</table></div>
+{% else %}{{ m.empty('check', 'Nobody is blacklisted', '') }}{% endif %}
+{% endblock %}

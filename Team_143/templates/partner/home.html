@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Partner home{% endblock %}
+{% block body %}
+{{ m.head('store', 'Partner', 'Welcome, ' ~ user_name, 'Your shop at a glance: where it stands, and what to do next.') }}
+{% if not b %}
+<div class="card framed" style="text-align:center;padding:2.2rem">
+  <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="" width="84" height="84">
+  <h2 class="plain" style="justify-content:center;margin:.8rem 0 .3rem">Let's open your shop</h2>
+  <p class="muted" style="max-width:52ch;margin:0 auto 1.2rem">Register your restaurant or pharmacy. An admin approves it, and then customers in your zone can order from it.</p>
+  <a class="btn lg" href="{{ url_for('partner.business') }}">{{ i.icon('plus') }} Register my business</a>
+</div>
+{% else %}
+<div class="card framed">
+  <div class="storefront">
+    <div class="sign">{{ m.type_icon(b.business_type) }}</div>
+    <div>
+      <h2 class="plain" style="margin:0;font-size:1.5rem">{{ b.business_name }}</h2>
+      <span class="muted">{{ b.business_type }}{% if b.cuisine_type %} · {{ b.cuisine_type }}{% elif b.pharmacy_type %} · {{ b.pharmacy_type }}{% endif %} · {{ b.zone_name }} ·
+        {% if b.opening_hour == b.closing_hour %}open 24 hours{% else %}{{ b.opening_hour|hm }}–{{ b.closing_hour|hm }}{% endif %}</span>
+    </div>
+    {{ m.tag(b.status) }}
+  </div>
+  <ol class="journey" aria-label="Business status: {{ b.status }}">
+    <li class="done">Registered</li>
+    <li class="{{ 'now' if b.status == 'Pending' else ('bad' if b.status == 'Rejected' else 'done') }}">{{ 'Rejected' if b.status == 'Rejected' else 'Admin review' }}</li>
+    <li class="{{ 'now' if b.status == 'Active' else ('bad' if b.status == 'Suspended' else '') }}">{{ 'Suspended' if b.status == 'Suspended' else 'Live for customers' }}</li>
+  </ol>
+  {% if b.status == 'Pending' %}<div class="note">{{ i.icon('clock') }}<span>Your business is waiting for an admin. You can already add products so they are ready on day one.</span></div>
+  {% elif b.status == 'Active' %}<div class="note good">{{ i.icon('check') }}<span>Your business is live. Customers in {{ b.zone_name }} can order from it.</span></div>
+  {% elif b.status == 'Suspended' %}<div class="note bad">{{ i.icon('ban') }}<span><b>Suspended: {{ b.suspension_reason }}.</b> Your products are off and cannot be turned on until a Super Admin reinstates the business.</span></div>
+  {% else %}<div class="note bad">{{ i.icon('x') }}<span>An admin rejected your business. Fix the details and send it again.</span></div>
+    <a class="btn" href="{{ url_for('partner.business') }}">{{ i.icon('refresh') }} Register again</a>{% endif %}
+  <p class="muted" style="margin-top:.8rem">{{ i.icon('phone') }} {% for p in phones %}{{ p.phone }}{{ ', ' if not loop.last }}{% else %}No phone number yet{% endfor %}</p>
+</div>
+<div class="grid g3">
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('partner.business') }}"><p class="card-title">{{ i.icon('store') }}<b>Business details</b></p><small class="muted">Hours, website and phone numbers.</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('partner.products') }}"><p class="card-title">{{ i.icon('box') }}<b>Products</b></p><small class="muted">Add, edit, hide and put products on offer.</small></a>
+  <a class="card" style="text-decoration:none;color:inherit;margin:0" href="{{ url_for('partner.performance') }}"><p class="card-title">{{ i.icon('chart') }}<b>Performance</b></p><small class="muted">Revenue per product and what customers think.</small></a>
+</div>
+{% endif %}
+{% endblock %}

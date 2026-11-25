@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Products{% endblock %}
+{% block body %}
+{% set on_count = rows|selectattr('is_available')|list|length %}
+{{ m.head('box', b.business_name, 'My products', on_count ~ ' of ' ~ rows|length ~ ' products are visible to customers. A discount can be at most half of the price.') }}
+{% if b.status == 'Suspended' %}<div class="note bad">{{ i.icon('ban') }}<span>Your business is suspended, so products cannot be changed or turned on.</span></div>{% endif %}
+
+<div class="split">
+  <div>
+  {% if rows %}
+    <div class="grid" style="gap:.8rem">
+    {% for p in rows %}
+      <div class="card prod {{ '' if p.is_available else 'off' }}" style="margin:0;{{ 'border:2px solid var(--accent)' if edit and edit.product_id == p.product_id }}">
+        <div class="pic">{{ p.product_name[:1] }}</div>
+        <div>
+          <h3 style="margin:0">{{ p.product_name }}</h3>
+          <small class="muted">{{ p.category }}{% if p.description %} · {{ p.description }}{% endif %}</small>
+          <div style="margin-top:.35rem">
+            {% if p.is_available %}<span class="tag Active">{{ i.icon('eye') }} Visible</span>{% else %}<span class="tag Cancelled">{{ i.icon('eyeoff') }} Hidden</span>{% endif %}
+            {% if p.discount_amount > 0 %}<span class="tag gold">{{ i.icon('percent') }} {{ p.discount_amount|money }} off</span>{% endif %}
+          </div>
+        </div>
+        <div class="price" style="text-align:right">{% if p.discount_amount > 0 %}<s>{{ p.price|money }}</s><br>{% endif %}{{ p.final_price|money }}</div>
+        <div class="prod-actions" style="grid-column:1/-1">
+          <a class="btn alt sm" href="{{ url_for('partner.products', edit=p.product_id) }}">{{ i.icon('edit') }} Edit</a>
+          <form method="post" class="inline"><input type="hidden" name="form" value="toggle"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+            <input type="hidden" name="to" value="{{ 0 if p.is_available else 1 }}"><button class="sm alt" type="submit">{{ i.icon('eyeoff' if p.is_available else 'eye') }} {{ 'Deactivate' if p.is_available else 'Reactivate' }}</button></form>
+          <form class="row" method="post" style="margin-left:auto"><input type="hidden" name="form" value="promo"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+            <input type="number" name="discount_amount" step="0.01" min="0" max="{{ (p.price / 2)|round(2) }}" placeholder="Max {{ '%.2f'|format((p.price / 2)|float) }}" aria-label="Discount in EGP for {{ p.product_name }}" required>
+            <button class="sm gold" type="submit">{{ i.icon('percent') }} Set discount</button>
+          </form>
+          {% if p.discount_amount > 0 %}<form method="post" class="inline"><input type="hidden" name="form" value="promo"><input type="hidden" name="product_id" value="{{ p.product_id }}">
+            <input type="hidden" name="discount_amount" value="0"><button class="sm alt" type="submit">{{ i.icon('x') }} Remove discount</button></form>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  {% else %}{{ m.empty('box', 'No products yet', 'Add your first product with the form.') }}{% endif %}
+  </div>
+
+  <div class="card framed sticky" id="form">
+    <p class="card-title">{{ i.icon('edit' if edit else 'plus') }}<b>{{ 'Edit ' ~ edit.product_name if edit else 'Add a product' }}</b></p>
+    <form class="stack" method="post" novalidate><input type="hidden" name="form" value="save">
+      {% if edit %}<input type="hidden" name="product_id" value="{{ edit.product_id }}">{% endif %}
+      <label>Name *<input name="name" maxlength="100" required value="{{ edit.product_name if edit else '' }}" placeholder="Koshary Large"></label>
+      <div class="cols">
+        <label>Category *<input name="category" maxlength="50" required value="{{ edit.category if edit else '' }}" placeholder="Main Dishes" list="cats"></label>
+        <label>Price (EGP) *<input type="number" name="price" step="0.01" min="0.01" required value="{{ edit.price if edit else '' }}"></label>
+      </div>
+      <datalist id="cats">{% for c in rows|map(attribute='category')|unique %}<option value="{{ c }}">{% endfor %}</datalist>
+      <label>Description<input name="description" maxlength="255" value="{{ (edit.description or '') if edit else '' }}"></label>
+      <label class="check"><input type="checkbox" name="is_available" {{ 'checked' if (not edit) or edit.is_available }}> Visible to customers</label>
+      <div class="form-actions"><button type="submit">{{ i.icon('check') }} Save product</button>{% if edit %}<a class="btn alt" href="{{ url_for('partner.products') }}">Cancel</a>{% endif %}</div>
+    </form>
+  </div>
+</div>
+{% endblock %}

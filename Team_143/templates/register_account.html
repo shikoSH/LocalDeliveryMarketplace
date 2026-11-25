@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Register as {{ kind }}{% endblock %}
+{% block body %}
+{% set info = {
+  'customer': ('heart', 'Join the family table', 'One account to order from every restaurant and pharmacy in your zone.', ['Add your addresses and cards after you log in', 'Your wallet pays refunds back instantly', 'Save favourites and get recommendations']),
+  'partner':  ('store', 'Open your shop to the neighbourhood', 'Create your partner account first. After you log in you register your restaurant or pharmacy.', ['An admin approves your business', 'You can prepare products while you wait', 'You always see your status and any reason']),
+  'rider':    ('bike', 'Ride with Sanaa', 'Deliver in your own zone and earn 80% of every delivery fee.', ['Your plate and license must be unique', 'You choose when you are available', 'Customers rate every delivery']),
+} %}
+{% set ic, heading, sub, points = info[kind] %}
+<div class="auth wide tone-{{ kind }}">
+  <div class="auth-side">
+    <div>
+      <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="">
+      <h2>{{ heading }}</h2>
+      <p>{{ sub }}</p>
+    </div>
+    <ul>{% for p in points %}<li>{{ i.icon('check') }}<span>{{ p }}</span></li>{% endfor %}</ul>
+  </div>
+  <div class="auth-main">
+    <p style="margin:0;font-size:.8rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink)">New {{ kind }} account</p>
+    <h1>Register as a {{ kind }}</h1>
+    <p class="muted">Fields marked * are required.</p>
+    <form class="stack" method="post" novalidate>
+      <p class="form-section">{{ i.icon('user') }} About you</p>
+      <div class="cols">
+        <label>First name *<input name="first_name" maxlength="30" required value="{{ request.form.first_name }}"></label>
+        <label>Middle name<input name="middle_name" maxlength="30" value="{{ request.form.middle_name }}"></label>
+        <label>Last name *<input name="last_name" maxlength="30" required value="{{ request.form.last_name }}"></label>
+      </div>
+      <div class="cols">
+        <label><span>Phone <small>11 digits</small></span><input name="phone" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="01xxxxxxxxx" value="{{ request.form.phone }}"></label>
+        <label>Date of birth<input type="date" name="dob" max="{{ today }}" value="{{ request.form.dob }}"></label>
+      </div>
+      <p class="form-section">{{ i.icon('key') }} Sign-in details</p>
+      <div class="cols">
+        <label>Username *<input name="username" maxlength="30" required value="{{ request.form.username }}" autocomplete="username"></label>
+        {{ m.password(label='Password *', autocomplete='new-password') }}
+        <label>Email *<input type="email" name="email" maxlength="100" required value="{{ request.form.email }}" placeholder="name@example.com"></label>
+      </div>
+      {% if kind == 'rider' %}
+      <p class="form-section">{{ i.icon('bike') }} Vehicle and zone</p>
+      <div class="cols">
+        <label>Vehicle type *<input name="vehicle_type" maxlength="30" required placeholder="Motorcycle" value="{{ request.form.vehicle_type }}"></label>
+        <label>Plate number *<input name="plate_no" maxlength="15" required placeholder="MAA-1201" value="{{ request.form.plate_no }}"></label>
+        <label>License number *<input name="license_no" maxlength="20" required value="{{ request.form.license_no }}"></label>
+        {{ m.zone_select(zones, selected=request.form.get('zone_id', 0)|int, label='Your zone *') }}
+      </div>
+      {% endif %}
+      <div class="form-actions" style="margin-top:.4rem">
+        <button type="submit" class="lg" style="background:var(--tone);border-color:var(--tone);color:#fff">{{ i.icon(ic) }} Create account</button>
+        <a href="{{ url_for('login', role=kind) }}">I already have an account</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

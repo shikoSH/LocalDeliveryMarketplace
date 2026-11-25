@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% import '_macros.html' as m %}
+{% block title %}Checkout{% endblock %}
+{% block body %}
+{% set lead %}Delivering to <b>{{ p.active_address }}</b> ({{ p.active_zone }}). The delivery fee of {{ fee|money }} is charged once for each business in your cart.{% endset %}
+{{ m.head('receipt', 'Checkout', 'What exactly will I pay, and why?', lead) }}
+{% if not count %}{{ m.empty('cart', 'Your cart is empty', '<a href="' ~ url_for('customer.browse') ~ '">Browse businesses</a>.') }}
+{% else %}
+{% for pr in problems %}<div class="note bad">{{ i.icon('alert') }}<span>{{ pr }} Remove those items from your cart before you check out.</span></div>{% endfor %}
+<div class="split">
+<div>
+  <h2 style="margin-top:0">How your total is built</h2>
+  {% for g in groups %}<div class="card">
+    <p class="card-title">{{ i.icon('store') }}<b>{{ g.name }}</b></p>
+    <table class="sum">{% for l in g.lines %}<tr><td>{{ l.quantity }} × {{ l.product_name }}{% if l.notes %}<small class="muted" style="display:block">“{{ l.notes }}”</small>{% endif %}</td><td class="n">{{ l.line_total|money }}</td></tr>{% endfor %}
+    <tr class="sub"><td style="border-top:1px dashed var(--line);padding-top:.5rem">Products from {{ g.name }}</td><td class="n" style="border-top:1px dashed var(--line);padding-top:.5rem">{{ g.subtotal|money }}</td></tr>
+    <tr class="sub"><td>{{ i.icon('bike') }} Delivery fee for this business</td><td class="n">{{ fee|money }}</td></tr>
+    <tr><td><b>Part total</b></td><td class="n"><b>{{ (g.subtotal + fee)|money }}</b></td></tr></table></div>{% endfor %}
+</div>
+<div class="sticky">
+  <div class="receipt" style="margin-bottom:1.4rem">
+    <p class="card-title">{{ i.icon('receipt') }}<b>Your bill</b></p>
+    <form method="get" class="stack" style="gap:.4rem"><label>Voucher
+      <select name="voucher_id" onchange="this.form.submit()"><option value="">No voucher</option>
+      {% for v in vouchers %}<option value="{{ v.voucher_id }}" {{ 'selected' if v.voucher_id == voucher_id }}>{{ v.promo_code }} · {{ ('%g%% off products'|format(v.amount|float)) if v.is_percentage else (v.amount|money ~ ' off') }} (until {{ v.expiry_date|d }})</option>{% endfor %}</select></label>
+      <noscript><button type="submit" class="sm">Apply voucher</button></noscript></form>
+    <table class="sum" style="margin-top:.8rem">
+      <tr><td>Products ({{ groups|length }} business{{ 'es' if groups|length != 1 }})</td><td class="n">{{ subtotal|money }}</td></tr>
+      <tr><td>Delivery fees ({{ groups|length }} × {{ fee|money }})</td><td class="n">{{ fees|money }}</td></tr>
+      <tr class="{{ 'minus' if discount > 0 }}"><td>Voucher discount</td><td class="n">− {{ discount|money }}</td></tr>
+      <tr class="total"><td>You pay</td><td class="n">{{ total|money }}</td></tr></table>
+  </div>
+  <form class="card stack" method="post" id="pay">
+    <input type="hidden" name="voucher_id" value="{{ voucher_id or '' }}">
+    <fieldset><legend>How will you pay?</legend>
+      <div class="pay-opts">
+        <label class="pay-opt"><input type="radio" name="payment_method" value="Cash" checked>{{ i.icon('coins') }}<span class="grow">Cash on delivery</span></label>
+        <label class="pay-opt"><input type="radio" name="payment_method" value="Wallet">{{ i.icon('wallet') }}<span class="grow">Wallet <small class="muted" style="display:block;font-weight:500">Balance {{ p.wallet_balance|money }}</small></span>{% if p.wallet_balance < total %}<span class="tag bad">Not enough</span>{% endif %}</label>
+        <label class="pay-opt"><input type="radio" name="payment_method" value="Card">{{ i.icon('card') }}<span class="grow">Saved card</span></label>
+      </div></fieldset>
+    <label id="cardbox" hidden>Which card?
+      <select name="card_id"><option value="">Choose a card</option>{% for c in cards %}<option value="{{ c.card_id }}">•••• {{ c.last_four_digits }} · {{ c.card_holder_name }} (exp. {{ c.expiration_date|d }})</option>{% endfor %}</select>
+      {% if not cards %}<small>No saved card. <a href="{{ url_for('customer.cards') }}">Save a card</a></small>{% endif %}</label>
+    <button type="submit" class="lg block" {{ 'disabled' if problems }}>{{ i.icon('check') }} Confirm and pay {{ total|money }}</button>
+  </form>
+</div></div>
+<script>
+document.querySelectorAll('#pay [name=payment_method]').forEach(function(r){r.addEventListener('change',function(){
+  document.getElementById('cardbox').hidden = document.querySelector('#pay [name=payment_method]:checked').value !== 'Card';});});
+</script>
+{% endif %}
+{% endblock %}

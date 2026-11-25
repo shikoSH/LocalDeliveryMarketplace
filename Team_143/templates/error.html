@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% import '_icons.html' as i %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+<div class="card framed" style="max-width:600px;margin:2.5rem auto;text-align:center;padding:2.2rem 2rem">
+  <img src="{{ url_for('static', filename='logo-mark.svg') }}" alt="" width="90" height="90" style="opacity:.9">
+  <h1 style="margin-top:.8rem">{{ title }}</h1>
+  <p class="lead" style="margin:0 auto 1.4rem">{{ text }}</p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn" href="javascript:history.back()">{{ i.icon('arrow') }} Go back</a>
+    <a class="btn alt" href="{{ url_for(role ~ '.home') if role else url_for('index') }}">{{ i.icon('home') }} {{ 'My home page' if role else 'Start page' }}</a>
+  </div>
+</div>
+{% endblock %}
